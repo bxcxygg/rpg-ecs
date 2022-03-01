@@ -1,0 +1,14 @@
+[general]
+
+singleton=false
+load_once=true
+symbol_prefix="godot_"
+reloadable=true
+
+[entry]
+
+OSX.64="res://../lib/x86_64-apple-darwin/librpg_ecs.dylib"
+
+[dependencies]
+
+OSX.64=[  ]

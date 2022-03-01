@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CLionExternalBuildManager">
+    <target id="7e966a6f-698d-4055-93b4-c8275144190e" name="Cargo" defaultType="TOOL">
+      <configuration id="cc1df1fc-754f-446d-a8f1-96917bd397d8" name="Cargo">
+        <build type="TOOL">
+          <tool actionId="Tool_External Tools_build" />
+        </build>
+        <clean type="TOOL">
+          <tool actionId="Tool_External Tools_clean" />
+        </clean>
+      </configuration>
+    </target>
+  </component>
+</project>

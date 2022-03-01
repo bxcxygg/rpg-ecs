@@ -1,0 +1,32 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=4
+
+_global_script_classes=[ {
+"base": "",
+"class": "ECSController",
+"language": "NativeScript",
+"path": "res://native/ECSController.gdns"
+} ]
+_global_script_class_icons={
+"ECSController": ""
+}
+
+[application]
+
+config/name="rpg-ecs"
+run/main_scene="res://scenes/World.tscn"
+
+[autoload]
+
+ECSController="*res://native/ECSController.gdns"
+
+[rendering]
+
+environment/default_environment="res://default_env.tres"
