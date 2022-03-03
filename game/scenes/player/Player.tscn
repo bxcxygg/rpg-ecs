@@ -1,10 +1,16 @@
-[gd_scene load_steps=27 format=2]
+[gd_scene load_steps=33 format=2]
 
 [ext_resource path="res://assets/Shadows/MediumShadow.png" type="Texture" id=1]
 [ext_resource path="res://scenes/delect_box/Hurtbox.tscn" type="PackedScene" id=2]
+[ext_resource path="res://components/Friction.tscn" type="PackedScene" id=3]
 [ext_resource path="res://assets/Player/Player.png" type="Texture" id=4]
 [ext_resource path="res://scenes/player/Player.tres" type="AnimationNodeStateMachine" id=5]
+[ext_resource path="res://components/Acceleration.tscn" type="PackedScene" id=6]
 [ext_resource path="res://scenes/delect_box/Hitbox.tscn" type="PackedScene" id=7]
+[ext_resource path="res://components/Roll.tscn" type="PackedScene" id=8]
+[ext_resource path="res://components/Stats.tscn" type="PackedScene" id=9]
+[ext_resource path="res://components/Damage.tscn" type="PackedScene" id=10]
+[ext_resource path="res://scenes/player/Player.gd" type="Script" id=11]
 
 [sub_resource type="CapsuleShape2D" id=1]
 radius = 4.0
@@ -528,6 +534,7 @@ height = 6.0
 
 [node name="Player" type="KinematicBody2D"]
 collision_layer = 2
+script = ExtResource( 11 )
 
 [node name="Shadow" type="Sprite" parent="."]
 position = Vector2( 0, 5 )
@@ -577,10 +584,13 @@ position = Vector2( 0, -4 )
 [node name="SwordHitbox" parent="HixboxPivot" instance=ExtResource( 7 )]
 position = Vector2( 15, 5 )
 collision_mask = 8
+script = null
 
 [node name="CollisionShape2D" parent="HixboxPivot/SwordHitbox" index="0"]
 position = Vector2( -1, -4 )
 shape = SubResource( 22 )
+
+[node name="Damage" parent="HixboxPivot" instance=ExtResource( 10 )]
 
 [node name="Hurtbox" parent="." instance=ExtResource( 2 )]
 collision_layer = 4
@@ -588,6 +598,14 @@ collision_layer = 4
 [node name="CollisionShape2D" parent="Hurtbox" index="0"]
 position = Vector2( -1, -4 )
 shape = SubResource( 28 )
+
+[node name="Acceleration" parent="." instance=ExtResource( 6 )]
+
+[node name="Friction" parent="." instance=ExtResource( 3 )]
+
+[node name="Roll" parent="." instance=ExtResource( 8 )]
+
+[node name="Stats" parent="." instance=ExtResource( 9 )]
 
 [editable path="HixboxPivot/SwordHitbox"]
 [editable path="Hurtbox"]

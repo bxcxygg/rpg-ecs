@@ -1,16 +1,10 @@
-use gdnative::prelude::{godot_init, InitHandle};
+use gdrust::gd_ecs_controller;
 
-mod app;
+use crate::plugins::GamePluginGroup;
+
 mod components;
 mod delect_box;
-mod ecs_controller;
-mod engine_sync;
 mod player;
+mod plugins;
 
-// Function that registers all exposed classes to Godot
-fn init(handle: InitHandle) {
-    handle.add_class::<ecs_controller::ECSController>();
-}
-
-// macros that create the entry-points of the dynamic library.
-godot_init!(init);
+gd_ecs_controller!(GamePluginGroup);
