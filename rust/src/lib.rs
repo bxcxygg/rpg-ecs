@@ -4,6 +4,7 @@ use crate::plugins::GamePluginGroup;
 
 mod components;
 mod delect_box;
+mod events;
 mod player;
 mod plugins;
 

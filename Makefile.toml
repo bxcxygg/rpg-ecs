@@ -7,7 +7,8 @@ script = '''
 # cargo make build-x86_64-linux-android-debug
 # cargo make build-i686-unknown-linux-gnu-debug
 # cargo make build-x86_64-unknown-linux-gnu-debug
-cargo make build-x86_64-apple-darwin-debug
+# cargo make build-x86_64-apple-darwin-debug
+cargo make build-aarch64-apple-darwin-debug
 # cargo make build-aarch64-apple-ios-debug
 # cargo make build-i686-pc-windows-gnu-debug
 # cargo make build-x86_64-pc-windows-gnu-debug
@@ -531,6 +532,72 @@ script_runner = "@shell"
 script = '''
 cd ../game/
 godot --export "Mac OSX.x86_64-apple-darwin.release" ../bin/x86_64-apple-darwin/rpg-ecs.release.x86_64-apple-darwin.dmg
+'''
+
+[tasks.ps1-build-aarch64-apple-darwin-debug]
+# dependencies = ["clean"]
+script_runner = "@shell"
+script = '''
+cargo build --target aarch64-apple-darwin
+rm -f ../lib/aarch64-apple-darwin/*.dylib && mv ../target/aarch64-apple-darwin/debug/*.dylib ../lib/aarch64-apple-darwin
+'''
+
+[tasks.sh-build-aarch64-apple-darwin-debug]
+# dependencies = ["clean"]
+script_runner = "@shell"
+script = '''
+cargo build --target aarch64-apple-darwin
+if [[ -f ../lib/aarch64-apple-darwin/*.dylib ]]; then
+  rm ../lib/aarch64-apple-darwin/*.dylib
+fi
+rm -f ../lib/aarch64-apple-darwin/*.dylib && mv ../target/aarch64-apple-darwin/debug/*.dylib ../lib/aarch64-apple-darwin
+'''
+
+[tasks.build-aarch64-apple-darwin-debug]
+run_task = [
+    { name = "ps1-build-aarch64-apple-darwin-debug", condition = { platforms = ["windows"] } },
+    { name = "sh-build-aarch64-apple-darwin-debug", condition = { platforms = ["linux", "mac"] } }
+]
+
+[tasks.export-aarch64-apple-darwin-debug]
+dependencies = ["build-aarch64-apple-darwin-debug"]
+script_runner = "@shell"
+script = '''
+cd ../game/
+godot --export-debug "Mac OSX.aarch64-apple-darwin.debug" ../bin/aarch64-apple-darwin/rpg-ecs.debug.aarch64-apple-darwin.dmg
+'''
+
+[tasks.ps1-build-aarch64-apple-darwin-release]
+# dependencies = ["clean"]
+script_runner = "@shell"
+script = '''
+cargo build --target aarch64-apple-darwin --release
+rm -f ../lib/aarch64-apple-darwin/*.dylib && mv ../target/aarch64-apple-darwin/release/*.dylib ../lib/aarch64-apple-darwin
+'''
+
+[tasks.sh-build-aarch64-apple-darwin-release]
+# dependencies = ["clean"]
+script_runner = "@shell"
+script = '''
+cargo build --target aarch64-apple-darwin --release
+if [[ -f ../lib/aarch64-apple-darwin/*.dylib ]]; then
+  rm ../lib/aarch64-apple-darwin/*.dylib
+fi
+rm -f ../lib/aarch64-apple-darwin/*.dylib && mv ../target/aarch64-apple-darwin/release/*.dylib ../lib/aarch64-apple-darwin
+'''
+
+[tasks.build-aarch64-apple-darwin-release]
+run_task = [
+    { name = "ps1-build-aarch64-apple-darwin-release", condition = { platforms = ["windows"] } },
+    { name = "sh-build-aarch64-apple-darwin-release", condition = { platforms = ["linux", "mac"] } }
+]
+
+[tasks.export-aarch64-apple-darwin-release]
+dependencies = ["build-aarch64-apple-darwin-release"]
+script_runner = "@shell"
+script = '''
+cd ../game/
+godot --export "Mac OSX.aarch64-apple-darwin.release" ../bin/aarch64-apple-darwin/rpg-ecs.release.aarch64-apple-darwin.dmg
 '''
 
 [tasks.ps1-build-aarch64-apple-ios-debug]

@@ -1,6 +1,6 @@
 use bevy::prelude::Component;
 use gdnative::api::{Area2D, Position2D};
-use gdnative::prelude::Ref;
+use gdnative::prelude::{Ref, Vector2};
 use gdrust::gdrust_macros::gdcomponent;
 use gdrust::unsafe_functions::{NodeExt, RefExt};
 
@@ -20,4 +20,5 @@ pub struct HitBoxPosition {
     pub(crate) hit_box: HitBox,
     #[component("Damage")]
     pub(crate) damage: Damage,
+    pub knockback_vector: Vector2,
 }
