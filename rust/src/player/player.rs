@@ -1,14 +1,15 @@
+use std::f64::consts::FRAC_PI_4;
+use std::time::Duration;
+
 use bevy::prelude::{
     Bundle, Commands, Component, Entity, EventReader, Query, Res, ResMut, State, Time, Timer, With,
 };
-use gdnative::api::KinematicBody2D;
+use gdnative::api::{CollisionShape2D, KinematicBody2D};
 use gdnative::prelude::*;
 use gdrust::ecs::engine_sync::components::PlayingGame;
 use gdrust::ecs::engine_sync::resources::PhysicsDelta;
 use gdrust::macros::*;
 use gdrust::unsafe_functions::{NodeExt, RefExt};
-use std::f64::consts::FRAC_PI_4;
-use std::time::Duration;
 
 use crate::delect_box::hit_box::HitBoxPosition;
 use crate::{
@@ -19,8 +20,10 @@ use crate::{
 pub struct SpawnPlayer {
     pub node: Ref<Node>,
 }
+
 #[derive(Component)]
 pub struct PlayerAttackAnimation;
+
 #[derive(Component)]
 pub struct PlayerRollAnimation;
 
@@ -72,6 +75,10 @@ pub struct PlayerBundle {
 /// This event is used to add the player node to the scene.
 pub fn add_player_system(mut commands: Commands, mut event: EventReader<SpawnPlayer>) {
     for SpawnPlayer { node } in event.iter() {
+        node.expect_safe()
+            .expect_node::<CollisionShape2D, &str>("HixboxPivot/SwordHitbox/CollisionShape2D")
+            .set_disabled(true);
+
         commands
             .spawn_bundle(PlayerBundle::new(node.clone()))
             .insert(PlayingGame);

@@ -46,31 +46,24 @@ pub fn add_grass_system(mut commands: Commands, mut event: EventReader<SpawnGras
 pub fn kill_grass_system(
     mut commands: Commands,
     grasses: Query<(Entity, &Grass, &GodotObjRef<PackedScene>)>,
-    sword_hitbox: Query<&HitBoxPosition, With<Player>>,
     mut event: EventReader<AreaIntoGrass>,
 ) {
-    for AreaIntoGrass { grass, area } in event.iter() {
+    for AreaIntoGrass { grass, area: _area } in event.iter() {
         for (entity, grass_item, effect) in grasses.iter() {
-            for sword_hitbox in sword_hitbox.iter() {
-                let grass = grass.expect_safe();
-                let grass_item = grass_item.node.expect_safe();
-                let area = area.expect_safe();
-                let sworld = sword_hitbox.hit_box.node.expect_safe();
+            let grass = grass.expect_safe();
+            let grass_item = grass_item.node.expect_safe();
 
-                // process collision
-                if grass.get_instance_id() == grass_item.get_instance_id()
-                    && area.get_instance_id() == sworld.get_instance_id()
-                {
-                    // spawn the effect
-                    commands.spawn().insert(Effect::new(
-                        grass.global_position(),
-                        effect.expect_safe().claim(),
-                        grass.expect_tree().current_scene().unwrap().expect_safe(),
-                    ));
-                    // remove the grass
-                    commands.entity(entity).despawn();
-                    grass.queue_free();
-                }
+            // process collision
+            if grass.get_instance_id() == grass_item.get_instance_id() {
+                // spawn the effect
+                commands.spawn().insert(Effect::new(
+                    grass.global_position(),
+                    effect.expect_safe().claim(),
+                    grass.expect_tree().current_scene().unwrap().expect_safe(),
+                ));
+                // remove the grass
+                commands.entity(entity).despawn();
+                grass.queue_free();
             }
         }
     }
