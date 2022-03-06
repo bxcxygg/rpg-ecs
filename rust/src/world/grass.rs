@@ -1,13 +1,12 @@
-use crate::delect_box::hit_box::HitBoxPosition;
-use crate::delect_box::hurt_box::HurtBox;
-use crate::effect::grass_effect::Effect;
-use crate::player::Player;
 use bevy::prelude::{Commands, Component, Entity, EventReader, Query, With};
 use gdnative::api::Area2D;
 use gdnative::prelude::*;
 use gdrust::ecs::engine_sync::components::{GodotObjRef, PlayingGame};
 use gdrust::macros::gdcomponent;
 use gdrust::unsafe_functions::{NodeExt, RefExt, ResourceLoaderExt};
+
+use crate::delect_box::hurt_box::HurtBox;
+use crate::effect::grass_effect::Effect;
 
 pub struct SpawnGrass {
     pub node: Ref<Node>,
@@ -43,6 +42,9 @@ pub fn add_grass_system(mut commands: Commands, mut event: EventReader<SpawnGras
     }
 }
 
+/// Kill grass when it is hit by a player.
+/// use `Effect` event to spawn a grass effect.
+/// use `AreaIntoGrass` event to get the area of the grass.
 pub fn kill_grass_system(
     mut commands: Commands,
     grasses: Query<(Entity, &Grass, &GodotObjRef<PackedScene>)>,
