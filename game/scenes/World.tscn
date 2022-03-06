@@ -1,4 +1,4 @@
-[gd_scene load_steps=60 format=2]
+[gd_scene load_steps=61 format=2]
 
 [ext_resource path="res://scenes/world/Bush.tscn" type="PackedScene" id=1]
 [ext_resource path="res://scenes/player/Player.tscn" type="PackedScene" id=2]
@@ -9,6 +9,7 @@
 [ext_resource path="res://scenes/enemies/Bat.tscn" type="PackedScene" id=7]
 [ext_resource path="res://scenes/ui/HealthUI.tscn" type="PackedScene" id=8]
 [ext_resource path="res://scenes/world/Tree.tscn" type="PackedScene" id=9]
+[ext_resource path="res://scenes/World.gd" type="Script" id=10]
 
 [sub_resource type="TileSet" id=1]
 0/name = "DirtTileset.png 0"
@@ -494,6 +495,7 @@ points = PoolVector2Array( 0, 0, 32, 0, 32, 32, 0, 32 )
 0/z_index = 0
 
 [node name="World" type="Node2D"]
+script = ExtResource( 10 )
 
 [node name="Background" type="Sprite" parent="."]
 position = Vector2( 160, 90 )
@@ -545,37 +547,31 @@ position = Vector2( 216, 120 )
 position = Vector2( 48, 144 )
 
 [node name="Grass2" parent="YSort/Grass" instance=ExtResource( 6 )]
-position = Vector2( 32, 144 )
+position = Vector2( 170, 115 )
 
 [node name="Grass3" parent="YSort/Grass" instance=ExtResource( 6 )]
-position = Vector2( 16, 144 )
+position = Vector2( 269, 110 )
 
 [node name="Grass4" parent="YSort/Grass" instance=ExtResource( 6 )]
-position = Vector2( 48, 128 )
+position = Vector2( 252, 110 )
 
 [node name="Grass5" parent="YSort/Grass" instance=ExtResource( 6 )]
-position = Vector2( 32, 32 )
+position = Vector2( 30, 144 )
 
 [node name="Grass6" parent="YSort/Grass" instance=ExtResource( 6 )]
-position = Vector2( 272, 112 )
+position = Vector2( 137, 32 )
 
 [node name="Grass7" parent="YSort/Grass" instance=ExtResource( 6 )]
-position = Vector2( 256, 112 )
+position = Vector2( 270, 27 )
 
 [node name="Grass8" parent="YSort/Grass" instance=ExtResource( 6 )]
-position = Vector2( 272, 96 )
+position = Vector2( 162, 101 )
 
 [node name="Grass9" parent="YSort/Grass" instance=ExtResource( 6 )]
-position = Vector2( 160, 112 )
+position = Vector2( 184, 99 )
 
 [node name="Grass10" parent="YSort/Grass" instance=ExtResource( 6 )]
-position = Vector2( 160, 96 )
-
-[node name="Grass11" parent="YSort/Grass" instance=ExtResource( 6 )]
-position = Vector2( 160, 32 )
-
-[node name="Grass12" parent="YSort/Grass" instance=ExtResource( 6 )]
-position = Vector2( 240, 0 )
+position = Vector2( 36, 31 )
 
 [node name="Bats" type="YSort" parent="YSort"]
 

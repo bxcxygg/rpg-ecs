@@ -3,7 +3,7 @@ use gdnative::api::{
     AnimatedSprite, AnimationNodeStateMachinePlayback, AnimationPlayer, AnimationTree,
 };
 use gdnative::prelude::*;
-use gdrust::gdrust_macros::{gdcomponent, single_value};
+use gdrust::macros::*;
 use gdrust::unsafe_functions::{NodeExt, RefExt};
 
 #[gdcomponent(extends = Node)]
@@ -12,12 +12,6 @@ pub struct Damage {
     pub node: Ref<Node>,
     #[property("damage")]
     pub damage: i32,
-}
-
-#[gdcomponent(extends = AnimatedSprite)]
-pub struct Effect {
-    #[node]
-    pub node: Ref<AnimatedSprite>,
 }
 
 #[gdcomponent(extends = Node)]

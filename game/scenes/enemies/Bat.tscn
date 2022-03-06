@@ -55,7 +55,7 @@ collision_mask = 17
 position = Vector2( 0, -12 )
 frames = SubResource( 6 )
 animation = "fly"
-frame = 2
+frame = 1
 playing = true
 
 [node name="ShadowSprite" type="Sprite" parent="."]

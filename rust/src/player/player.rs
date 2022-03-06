@@ -1,12 +1,14 @@
-use bevy::prelude::{Bundle, Commands, Component, EventReader, Query, Res, ResMut, State, With};
+use bevy::prelude::{
+    Bundle, Commands, Component, Entity, EventReader, Query, Res, ResMut, State, Time, Timer, With,
+};
 use gdnative::api::KinematicBody2D;
-use gdnative::prelude::{Input, Ref, Vector2};
+use gdnative::prelude::*;
 use gdrust::ecs::engine_sync::components::PlayingGame;
-use gdrust::ecs::engine_sync::events::SpawnNode;
 use gdrust::ecs::engine_sync::resources::PhysicsDelta;
-use gdrust::gdrust_macros::{gdbundle, gdcomponent};
+use gdrust::macros::*;
 use gdrust::unsafe_functions::{NodeExt, RefExt};
 use std::f64::consts::FRAC_PI_4;
+use std::time::Duration;
 
 use crate::delect_box::hit_box::HitBoxPosition;
 use crate::{
@@ -14,8 +16,13 @@ use crate::{
     delect_box::hurt_box::HurtBox,
 };
 
-pub struct PlayerAttackAnimationFinished;
-pub struct PlayerRollAnimationFinished;
+pub struct SpawnPlayer {
+    pub node: Ref<Node>,
+}
+#[derive(Component)]
+pub struct PlayerAttackAnimation;
+#[derive(Component)]
+pub struct PlayerRollAnimation;
 
 /// player state.
 /// This is the state of the player.
@@ -59,32 +66,21 @@ pub struct PlayerBundle {
     sword_hitbox: HitBoxPosition,
     #[component("Hurtbox")]
     hurt_box: HurtBox,
-    #[value(PlayingGame)]
-    in_game: PlayingGame,
 }
 
 /// Add Player Node Event.
 /// This event is used to add the player node to the scene.
-pub fn add_player_system(mut commands: Commands, mut event: EventReader<SpawnNode>) {
-    for SpawnNode { node, name } in event.iter() {
-        if name != "Player" {
-            continue;
-        }
-
+pub fn add_player_system(mut commands: Commands, mut event: EventReader<SpawnPlayer>) {
+    for SpawnPlayer { node } in event.iter() {
         commands
-            .spawn()
-            .insert_bundle(PlayerBundle::new(node.clone()));
+            .spawn_bundle(PlayerBundle::new(node.clone()))
+            .insert(PlayingGame);
     }
 }
 
 /// Player stage system.
 /// This system is used to determine the player's stage.
-pub fn player_state_system(
-    mut state: ResMut<State<PlayerState>>,
-    mut attack_event: EventReader<PlayerAttackAnimationFinished>,
-    mut roll_event: EventReader<PlayerRollAnimationFinished>,
-    mut query: Query<&mut Velocity, With<Player>>,
-) {
+pub fn player_move_state_system(mut state: ResMut<State<PlayerState>>) {
     let input = Input::godot_singleton();
     if input.is_action_just_pressed("attack", false)
         && state.current().clone() != PlayerState::ATTACK
@@ -94,15 +90,38 @@ pub fn player_state_system(
     if input.is_action_just_pressed("roll", false) && state.current().clone() != PlayerState::ROLL {
         state.set(PlayerState::ROLL).unwrap();
     }
+}
 
-    for _ in attack_event.iter() {
-        if state.current().clone() != PlayerState::MOVE {
+/// Player state system.
+/// This system is used to determine the player's state.
+pub fn player_attack_state_system(
+    mut state: ResMut<State<PlayerState>>,
+    mut commands: Commands,
+    time: Res<Time>,
+    mut animation: Query<(Entity, &mut Timer)>,
+) {
+    for (entity, mut timer) in animation.iter_mut() {
+        timer.tick(time.delta());
+        if timer.finished() {
+            commands.entity(entity).despawn();
             state.set(PlayerState::MOVE).unwrap();
         }
     }
+}
 
-    for _ in roll_event.iter() {
-        if state.current().clone() != PlayerState::MOVE {
+/// Player state system.
+/// This system is used to determine the player's state.
+pub fn player_roll_state_system(
+    mut state: ResMut<State<PlayerState>>,
+    mut commands: Commands,
+    time: Res<Time>,
+    mut query: Query<&mut Velocity, With<Player>>,
+    mut animation: Query<(Entity, &mut Timer)>,
+) {
+    for (entity, mut timer) in animation.iter_mut() {
+        timer.tick(time.delta());
+        if timer.finished() {
+            commands.entity(entity).despawn();
             state.set(PlayerState::MOVE).unwrap();
             (*query.single_mut()).value = Vector2::ZERO;
         }
@@ -110,20 +129,22 @@ pub fn player_state_system(
 }
 
 /// Player Move System.
-/// This system is used to move the player.
+/// This system is used to change player's velocity.
 pub fn player_move_system(
     delta: Res<PhysicsDelta>,
-    mut query0: Query<(
-        &Player,
-        &mut HitBoxPosition,
-        &Animation,
-        &mut Velocity,
-        &Acceleration,
-        &Friction,
-        &mut Roll,
-    )>,
+    mut query0: Query<
+        (
+            &mut HitBoxPosition,
+            &Animation,
+            &mut Velocity,
+            &Acceleration,
+            &Friction,
+            &mut Roll,
+        ),
+        With<Player>,
+    >,
 ) {
-    for (player, mut sword_hitbox, animation, mut velocity, acceleration, friction, mut roll) in
+    for (mut sword_hitbox, animation, mut velocity, acceleration, friction, mut roll) in
         query0.iter_mut()
     {
         let input = Input::godot_singleton();
@@ -159,34 +180,67 @@ pub fn player_move_system(
 
             (*velocity).value = velocity.move_toward(Vector2::ZERO, friction.value * delta.value);
         }
-
-        (*velocity).value = player.node.expect_safe().move_and_slide(
-            (*velocity).value,
-            Vector2::ZERO,
-            false,
-            4,
-            FRAC_PI_4,
-            true,
-        );
     }
 }
 
 /// Player Attack System.
 /// This system is used to attack the player.
-pub fn player_attack_system(mut query: Query<(&mut Velocity, &Animation), With<Player>>) {
+pub fn player_attack_system(
+    mut commands: Commands,
+    mut query: Query<(&mut Velocity, &Animation), With<Player>>,
+) {
     for (mut velocity, animation) in query.iter_mut() {
         (*velocity).value = Vector2::ZERO;
         animation.animation_state.expect_safe().travel("Attack");
+
+        let animation_player = animation.animation_player.expect_safe();
+        commands
+            .spawn()
+            .insert(PlayerAttackAnimation)
+            .insert(Timer::new(
+                Duration::from_secs_f64(
+                    animation_player
+                        .get_animation("attack_up")
+                        .unwrap()
+                        .expect_safe()
+                        .length(),
+                ),
+                false,
+            ));
     }
 }
 
 /// Player Roll System.
 /// This system is used to roll the player.
-pub fn player_roll_system(mut query: Query<(&mut Velocity, &Animation, &Roll, &Player)>) {
-    for (mut velocity, animation, roll, player) in query.iter_mut() {
+pub fn player_roll_system(
+    mut commands: Commands,
+    mut query: Query<(&mut Velocity, &Animation, &Roll), With<Player>>,
+) {
+    for (mut velocity, animation, roll) in query.iter_mut() {
         (*velocity).value = roll.roll_velocity * roll.roll_speed;
         animation.animation_state.expect_safe().travel("Roll");
 
+        let animation_player = animation.animation_player.expect_safe();
+        commands
+            .spawn()
+            .insert(PlayerRollAnimation)
+            .insert(Timer::new(
+                Duration::from_secs_f64(
+                    animation_player
+                        .get_animation("roll_up")
+                        .unwrap()
+                        .expect_safe()
+                        .length(),
+                ),
+                false,
+            ));
+    }
+}
+
+/// Player Move System.
+/// This system is used to move the player.
+pub fn player_movement_system(mut query: Query<(&mut Velocity, &Player)>) {
+    for (mut velocity, player) in query.iter_mut() {
         (*velocity).value = player.node.expect_safe().move_and_slide(
             (*velocity).value,
             Vector2::ZERO,

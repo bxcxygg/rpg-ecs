@@ -1,7 +1,7 @@
 use bevy::prelude::Component;
 use gdnative::api::{Area2D, Position2D};
 use gdnative::prelude::{Ref, Vector2};
-use gdrust::gdrust_macros::gdcomponent;
+use gdrust::macros::gdcomponent;
 use gdrust::unsafe_functions::{NodeExt, RefExt};
 
 use crate::components::Damage;
