@@ -9,6 +9,8 @@ use crate::delect_box::hurt_box::HurtBox;
 use crate::effect::grass_effect::Effect;
 use crate::player::Player;
 
+const GRASS_EFFECT_LEN: f32 = 4. / 15.;
+
 pub struct SpawnGrass {
     pub node: Ref<Node>,
 }
@@ -61,7 +63,7 @@ pub fn kill_grass_system(
                         effect.expect_safe().claim(),
                         grass.expect_tree().current_scene().unwrap().expect_safe(),
                     ))
-                    .insert(Timer::from_seconds(4. / 15., false));
+                    .insert(Timer::from_seconds(GRASS_EFFECT_LEN, false));
                 // remove the grass
                 commands.entity(entity).despawn();
                 grass.queue_free();

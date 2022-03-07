@@ -16,6 +16,9 @@ use crate::{
     delect_box::hurt_box::HurtBox,
 };
 
+const ATTACK_ANIMATION_LEN: f32 = 0.4;
+const ROLL_ANIMATION_LEN: f32 = 0.5;
+
 pub struct SpawnPlayer {
     pub node: Ref<Node>,
 }
@@ -176,7 +179,7 @@ pub fn player_attack_system(
 
         commands
             .entity(entity)
-            .insert(Timer::from_seconds(0.4, false));
+            .insert(Timer::from_seconds(ATTACK_ANIMATION_LEN, false));
     }
 }
 
@@ -192,7 +195,7 @@ pub fn player_roll_system(
 
         commands
             .entity(entity)
-            .insert(Timer::from_seconds(0.5, false));
+            .insert(Timer::from_seconds(ROLL_ANIMATION_LEN, false));
     }
 }
 
