@@ -478,7 +478,7 @@ script = null
 position = Vector2( -1, -4 )
 shape = SubResource( 22 )
 
-[node name="Damage" parent="HixboxPivot" instance=ExtResource( 10 )]
+[node name="Damage" parent="HixboxPivot/SwordHitbox" instance=ExtResource( 10 )]
 
 [node name="Hurtbox" parent="." instance=ExtResource( 2 )]
 collision_layer = 4

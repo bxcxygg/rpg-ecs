@@ -8,7 +8,7 @@ script = '''
 # cargo make build-i686-unknown-linux-gnu-debug
 # cargo make build-x86_64-unknown-linux-gnu-debug
 cargo make build-x86_64-apple-darwin-debug
-# cargo make build-aarch64-apple-darwin-debug
+cargo make build-aarch64-apple-darwin-debug
 # cargo make build-aarch64-apple-ios-debug
 # cargo make build-i686-pc-windows-gnu-debug
 # cargo make build-x86_64-pc-windows-gnu-debug

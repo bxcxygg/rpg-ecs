@@ -1,5 +1,4 @@
 use std::f64::consts::FRAC_PI_4;
-use std::time::Duration;
 
 use bevy::prelude::{
     Bundle, Commands, Component, Entity, EventReader, Query, Res, ResMut, State, Time, Timer, With,
@@ -11,7 +10,7 @@ use gdrust::ecs::engine_sync::resources::PhysicsDelta;
 use gdrust::macros::*;
 use gdrust::unsafe_functions::{NodeExt, RefExt};
 
-use crate::delect_box::hit_box::HitBoxPosition;
+use crate::delect_box::hit_box::HitBox;
 use crate::{
     components::{Acceleration, Animation, Friction, Roll, Stats, Velocity},
     delect_box::hurt_box::HurtBox,
@@ -20,12 +19,6 @@ use crate::{
 pub struct SpawnPlayer {
     pub node: Ref<Node>,
 }
-
-#[derive(Component)]
-pub struct PlayerAttackAnimation;
-
-#[derive(Component)]
-pub struct PlayerRollAnimation;
 
 /// player state.
 /// This is the state of the player.
@@ -65,8 +58,8 @@ pub struct PlayerBundle {
     stats: Stats,
     #[value(Animation::new(node))]
     animation_tree: Animation,
-    #[component("HixboxPivot")]
-    sword_hitbox: HitBoxPosition,
+    #[component("HixboxPivot/SwordHitbox")]
+    sword_hitbox: HitBox,
     #[component("Hurtbox")]
     hurt_box: HurtBox,
 }
@@ -85,52 +78,33 @@ pub fn add_player_system(mut commands: Commands, mut event: EventReader<SpawnPla
     }
 }
 
-/// Player stage system.
-/// This system is used to determine the player's stage.
-pub fn player_move_state_system(mut state: ResMut<State<PlayerState>>) {
-    let input = Input::godot_singleton();
-    if input.is_action_just_pressed("attack", false)
-        && state.current().clone() != PlayerState::ATTACK
-    {
-        state.set(PlayerState::ATTACK).unwrap();
-    }
-    if input.is_action_just_pressed("roll", false) && state.current().clone() != PlayerState::ROLL {
-        state.set(PlayerState::ROLL).unwrap();
-    }
-}
-
 /// Player state system.
 /// This system is used to determine the player's state.
-pub fn player_attack_state_system(
+pub fn player_state_system(
     mut state: ResMut<State<PlayerState>>,
     mut commands: Commands,
     time: Res<Time>,
-    mut animation: Query<(Entity, &mut Timer)>,
+    mut animation: Query<(Entity, &mut Velocity, &mut Timer), With<Player>>,
 ) {
-    for (entity, mut timer) in animation.iter_mut() {
-        timer.tick(time.delta());
-        if timer.finished() {
-            commands.entity(entity).despawn();
-            state.set(PlayerState::MOVE).unwrap();
+    if state.current().eq(&PlayerState::MOVE) {
+        let input = Input::godot_singleton();
+        if input.is_action_just_pressed("attack", false) {
+            state.set(PlayerState::ATTACK).unwrap();
+        }
+        if input.is_action_just_pressed("roll", false) {
+            state.set(PlayerState::ROLL).unwrap();
         }
     }
-}
 
-/// Player state system.
-/// This system is used to determine the player's state.
-pub fn player_roll_state_system(
-    mut state: ResMut<State<PlayerState>>,
-    mut commands: Commands,
-    time: Res<Time>,
-    mut query: Query<&mut Velocity, With<Player>>,
-    mut animation: Query<(Entity, &mut Timer)>,
-) {
-    for (entity, mut timer) in animation.iter_mut() {
+    for (entity, mut velocity, mut timer) in animation.iter_mut() {
         timer.tick(time.delta());
         if timer.finished() {
-            commands.entity(entity).despawn();
+            commands.entity(entity).remove::<Timer>();
             state.set(PlayerState::MOVE).unwrap();
-            (*query.single_mut()).value = Vector2::ZERO;
+
+            if state.current().eq(&PlayerState::ROLL) {
+                (*velocity).value = Vector2::ZERO;
+            }
         }
     }
 }
@@ -141,7 +115,7 @@ pub fn player_move_system(
     delta: Res<PhysicsDelta>,
     mut query0: Query<
         (
-            &mut HitBoxPosition,
+            &mut HitBox,
             &Animation,
             &mut Velocity,
             &Acceleration,
@@ -194,26 +168,15 @@ pub fn player_move_system(
 /// This system is used to attack the player.
 pub fn player_attack_system(
     mut commands: Commands,
-    mut query: Query<(&mut Velocity, &Animation), With<Player>>,
+    mut query: Query<(Entity, &mut Velocity, &Animation), With<Player>>,
 ) {
-    for (mut velocity, animation) in query.iter_mut() {
+    for (entity, mut velocity, animation) in query.iter_mut() {
         (*velocity).value = Vector2::ZERO;
         animation.animation_state.expect_safe().travel("Attack");
 
-        let animation_player = animation.animation_player.expect_safe();
         commands
-            .spawn()
-            .insert(PlayerAttackAnimation)
-            .insert(Timer::new(
-                Duration::from_secs_f64(
-                    animation_player
-                        .get_animation("attack_up")
-                        .unwrap()
-                        .expect_safe()
-                        .length(),
-                ),
-                false,
-            ));
+            .entity(entity)
+            .insert(Timer::from_seconds(0.4, false));
     }
 }
 
@@ -221,26 +184,15 @@ pub fn player_attack_system(
 /// This system is used to roll the player.
 pub fn player_roll_system(
     mut commands: Commands,
-    mut query: Query<(&mut Velocity, &Animation, &Roll), With<Player>>,
+    mut query: Query<(Entity, &mut Velocity, &Animation, &Roll), With<Player>>,
 ) {
-    for (mut velocity, animation, roll) in query.iter_mut() {
+    for (entity, mut velocity, animation, roll) in query.iter_mut() {
         (*velocity).value = roll.roll_velocity * roll.roll_speed;
         animation.animation_state.expect_safe().travel("Roll");
 
-        let animation_player = animation.animation_player.expect_safe();
         commands
-            .spawn()
-            .insert(PlayerRollAnimation)
-            .insert(Timer::new(
-                Duration::from_secs_f64(
-                    animation_player
-                        .get_animation("roll_up")
-                        .unwrap()
-                        .expect_safe()
-                        .length(),
-                ),
-                false,
-            ));
+            .entity(entity)
+            .insert(Timer::from_seconds(0.5, false));
     }
 }
 

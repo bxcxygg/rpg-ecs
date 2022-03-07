@@ -6,11 +6,9 @@ mod player;
 mod world;
 
 use crate::app::get_ecs;
-use crate::effect::grass_effect::EffectFinished;
 use crate::player::SpawnPlayer;
-use crate::world::{AreaIntoGrass, SpawnGrass};
+use crate::world::SpawnGrass;
 use bevy::prelude::{App, Schedule, Stage, World};
-use gdnative::api::{AnimatedSprite, Area2D};
 use gdnative::prelude::*;
 use gdrust::ecs::engine_sync::{
     events::{spawn_game, spawn_node, update_delta_resource, user_input},
@@ -78,24 +76,7 @@ impl ECSController {
     }
 
     #[export]
-    fn add_signal_to_ecs(&mut self, _owner: &Node, name: String, vars: VariantArray) {
-        match name.as_str() {
-            "grass/_on_area_entered" => spawn_node(
-                &mut self.world,
-                AreaIntoGrass {
-                    grass: vars.get(0).try_to::<Ref<Node2D>>().unwrap(),
-                    area: vars.get(1).try_to::<Ref<Area2D>>().unwrap(),
-                },
-            ),
-            "Effect/_on_animation_finished" => spawn_node(
-                &mut self.world,
-                EffectFinished {
-                    effect: vars.get(0).try_to::<Ref<AnimatedSprite>>().unwrap(),
-                },
-            ),
-            _ => (),
-        }
-    }
+    fn add_signal_to_ecs(&mut self, _owner: &Node, _name: String, _vars: VariantArray) {}
 
     #[export]
     fn _input(&mut self, _owner: &Node, event: Ref<InputEvent>) {

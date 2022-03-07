@@ -1,7 +1,5 @@
 use bevy::prelude::Component;
-use gdnative::api::{
-    AnimatedSprite, AnimationNodeStateMachinePlayback, AnimationPlayer, AnimationTree,
-};
+use gdnative::api::{AnimationNodeStateMachinePlayback, AnimationPlayer, AnimationTree};
 use gdnative::prelude::*;
 use gdrust::macros::*;
 use gdrust::unsafe_functions::{NodeExt, RefExt};

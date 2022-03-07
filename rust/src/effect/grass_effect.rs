@@ -1,12 +1,7 @@
-use bevy::app::EventReader;
-use bevy::prelude::{Commands, Component, Entity, Query};
+use bevy::prelude::{Commands, Component, Entity, Query, Res, Time, Timer};
 use gdnative::api::AnimatedSprite;
 use gdnative::prelude::*;
 use gdrust::unsafe_functions::{PackedSceneExt, RefExt};
-
-pub struct EffectFinished {
-    pub effect: Ref<AnimatedSprite>,
-}
 
 #[derive(Component)]
 pub struct Effect {
@@ -41,21 +36,16 @@ impl Effect {
 
 pub fn effect_finished(
     mut commands: Commands,
-    mut finish_effect: EventReader<EffectFinished>,
-    effect: Query<(Entity, &Effect)>,
+    time: Res<Time>,
+    mut effect: Query<(Entity, &Effect, &mut Timer)>,
 ) {
-    for EffectFinished {
-        effect: finish_effect,
-    } in finish_effect.iter()
-    {
-        for (entity, effect) in effect.iter() {
-            let finish_effect = finish_effect.expect_safe();
+    for (entity, effect, mut timer) in effect.iter_mut() {
+        timer.tick(time.delta());
+        if timer.finished() {
             let effect = effect.node.expect_safe();
 
-            if finish_effect.get_instance_id() == effect.get_instance_id() {
-                effect.queue_free();
-                commands.entity(entity).despawn();
-            }
+            effect.queue_free();
+            commands.entity(entity).despawn();
         }
     }
 }
