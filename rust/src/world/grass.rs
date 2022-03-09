@@ -1,12 +1,12 @@
 use crate::delect_box::hit_box::HitBox;
-use bevy::prelude::{Commands, Component, Entity, EventReader, Query, Timer, With};
+use bevy::prelude::{Commands, Component, Entity, EventReader, Query, With};
 use gdnative::prelude::*;
 use gdrust::ecs::engine_sync::components::{GodotObjRef, PlayingGame};
 use gdrust::macros::gdcomponent;
 use gdrust::unsafe_functions::{NodeExt, RefExt, ResourceLoaderExt};
 
 use crate::delect_box::hurt_box::HurtBox;
-use crate::effect::grass_effect::Effect;
+use crate::effect::grass_effect::add_effect;
 use crate::player::Player;
 
 const GRASS_EFFECT_LEN: f32 = 4. / 15.;
@@ -56,14 +56,15 @@ pub fn kill_grass_system(
             // process collision
             if hitbox_area.overlaps_area(hurtbox) {
                 // spawn the effect
-                commands
-                    .spawn()
-                    .insert(Effect::new(
-                        grass.global_position(),
-                        effect.expect_safe().claim(),
-                        grass.expect_tree().current_scene().unwrap().expect_safe(),
-                    ))
-                    .insert(Timer::from_seconds(GRASS_EFFECT_LEN, false));
+                let entity_commands = commands.spawn();
+                add_effect(
+                    entity_commands,
+                    effect.expect_safe().claim(),
+                    GRASS_EFFECT_LEN,
+                    grass.global_position(),
+                    grass.expect_tree().current_scene().unwrap().expect_safe(),
+                );
+
                 // remove the grass
                 commands.entity(entity).despawn();
                 grass.queue_free();

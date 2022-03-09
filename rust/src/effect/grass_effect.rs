@@ -1,3 +1,4 @@
+use bevy::ecs::system::EntityCommands;
 use bevy::prelude::{Commands, Component, Entity, Query, Res, Time, Timer};
 use gdnative::api::AnimatedSprite;
 use gdnative::prelude::*;
@@ -16,15 +17,6 @@ impl Effect {
         effect.set_global_position(pos);
         parent.add_child(effect, false);
 
-        effect
-            .connect(
-                "animation_finished",
-                effect,
-                "_on_animation_finished",
-                VariantArray::new_shared(),
-                0,
-            )
-            .expect("Failed to connect to animation_finished signal");
         effect.set_frame(0);
         effect.play("animate", false);
 
@@ -32,6 +24,18 @@ impl Effect {
             node: effect.claim(),
         }
     }
+}
+
+pub fn add_effect(
+    mut commands: EntityCommands,
+    effect: Ref<PackedScene>,
+    time: f32,
+    pos: Vector2,
+    parent: TRef<Node>,
+) {
+    commands
+        .insert(Effect::new(pos, effect, parent))
+        .insert(Timer::from_seconds(time, false));
 }
 
 pub fn effect_finished(

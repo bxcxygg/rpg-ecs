@@ -1,17 +1,23 @@
+#![feature(derive_default_enum)]
+
 mod app;
 mod components;
 mod delect_box;
-mod effect;
+// mod effect;
+// mod enemy;
 mod player;
-mod world;
+// mod world;
 
-use crate::app::get_ecs;
-use crate::player::SpawnPlayer;
-use crate::world::SpawnGrass;
-use bevy::prelude::{App, Schedule, Stage, World};
+use crate::app::{init_ecs, with_schedule, with_world};
+use crate::components::{Acceleration, Friction, Roll, Stats};
+use crate::delect_box::hit_box::HitBox;
+use crate::delect_box::hurt_box::HurtBox;
+use crate::player::{Player, PlayerPlugin};
+use bevy::app::App;
+use bevy::prelude::{Plugin, Stage};
 use gdnative::prelude::*;
 use gdrust::ecs::engine_sync::{
-    events::{spawn_game, spawn_node, update_delta_resource, user_input},
+    events::update_delta_resource,
     resources::{IdleDelta, PhysicsDelta},
 };
 
@@ -23,8 +29,6 @@ use gdrust::ecs::engine_sync::{
 #[register_with(Self::register_builder)]
 pub struct ECSController {
     name: String,
-    world: World,
-    schedule: Schedule,
 }
 
 #[methods]
@@ -33,13 +37,8 @@ impl ECSController {
 
     fn new(_owner: &Node) -> Self {
         godot_print!("ECSController is created!");
-        let App {
-            world, schedule, ..
-        } = get_ecs();
         ECSController {
             name: "".to_string(),
-            world,
-            schedule,
         }
     }
 
@@ -50,44 +49,40 @@ impl ECSController {
 
     #[export]
     fn _process(&mut self, _owner: &Node, delta: f32) {
-        self.world.clear_trackers();
-        update_delta_resource::<IdleDelta>(&mut self.world, delta);
-        self.schedule.run(&mut self.world);
+        with_world(|w| {
+            w.clear_trackers();
+            update_delta_resource::<IdleDelta>(w, delta);
+            with_schedule(|s| s.run(w));
+        });
     }
 
     /// I created two Detlta resources, one for the physics loop, and one for the Idle loop
     #[export]
     fn _physics_process(&mut self, _owner: &Node, delta: f32) {
-        update_delta_resource::<PhysicsDelta>(&mut self.world, delta);
-    }
-
-    #[export]
-    fn add_node_to_ecs(&mut self, _owner: &Node, other: Ref<Node>, name: String) {
-        match name.as_str() {
-            "Player" => spawn_node(&mut self.world, SpawnPlayer { node: other }),
-            "Grass" => spawn_node(&mut self.world, SpawnGrass { node: other }),
-            _ => (),
-        }
-    }
-
-    #[export]
-    fn add_game_to_ecs(&mut self, _owner: &Node, other: Ref<Node>) {
-        spawn_game(&mut self.world, other);
-    }
-
-    #[export]
-    fn add_signal_to_ecs(&mut self, _owner: &Node, _name: String, _vars: VariantArray) {}
-
-    #[export]
-    fn _input(&mut self, _owner: &Node, event: Ref<InputEvent>) {
-        let event = unsafe { event.assume_safe() };
-        if !event.is_action_type() {
-            return;
-        }
-        user_input(&mut self.world, event);
+        with_world(|w| {
+            update_delta_resource::<PhysicsDelta>(w, delta);
+        });
     }
 }
+
+struct GamePlugin;
+impl Plugin for GamePlugin {
+    fn build(&self, app: &mut App) {
+        app.add_plugin(PlayerPlugin);
+    }
+}
+
 fn init(handle: InitHandle) {
     handle.add_class::<ECSController>();
+    handle.add_class::<HitBox>();
+    handle.add_class::<HurtBox>();
+    handle.add_class::<Acceleration>();
+    handle.add_class::<Friction>();
+    handle.add_class::<Roll>();
+    handle.add_class::<Stats>();
+    handle.add_class::<Player>();
+
+    init_ecs(GamePlugin);
 }
+
 godot_init!(init);

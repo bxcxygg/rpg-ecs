@@ -1,82 +1,105 @@
 use bevy::prelude::Component;
-use gdnative::api::{AnimationNodeStateMachinePlayback, AnimationPlayer, AnimationTree};
 use gdnative::prelude::*;
-use gdrust::macros::*;
-use gdrust::unsafe_functions::{NodeExt, RefExt};
+use std::ops::{Deref, DerefMut};
 
-#[gdcomponent(extends = Node)]
-pub struct Damage {
-    #[node]
-    pub node: Ref<Node>,
-    #[property("damage")]
-    pub damage: i32,
-}
-
-#[gdcomponent(extends = Node)]
+/// Stats Component.
+#[derive(Component, NativeClass, Default)]
+#[inherit(Node)]
+#[user_data(user_data::RwLockData<Stats>)]
 pub struct Stats {
-    #[node]
-    pub node: Ref<Node>,
-    #[property("max_health")]
+    #[property(default = 4)]
     pub max_health: i32,
-    #[property("health")]
+    #[property(default = 4, get, set = "Self::set_health")]
     pub health: i32,
 }
-
-#[gdcomponent(extends = Node)]
-pub struct Roll {
-    #[node]
-    pub node: Ref<Node>,
-    #[property("roll_speed")]
-    pub roll_speed: f32,
-    pub roll_velocity: Vector2,
-}
-
-#[gdcomponent(extends = Node)]
-pub struct Acceleration {
-    #[node]
-    pub node: Ref<Node>,
-    #[property("max_speed")]
-    pub max_speed: f32,
-    #[property("acceleration")]
-    pub acceleration: f32,
-}
-
-#[gdcomponent(extends = Node)]
-pub struct Friction {
-    #[node]
-    pub node: Ref<Node>,
-    #[property("friction")]
-    pub value: f32,
-}
-
-#[derive(Component)]
-pub struct Animation {
-    pub animation_player: Ref<AnimationPlayer>,
-    pub animation_tree: Ref<AnimationTree>,
-    pub animation_state: Ref<AnimationNodeStateMachinePlayback>,
-}
-
-impl Animation {
-    pub fn new(node: TRef<Node>) -> Self {
-        let animation_tree = node.expect_node::<AnimationTree, &str>("AnimationTree");
-        let animation_player = node.expect_node::<AnimationPlayer, &str>("AnimationPlayer");
-        let animation_state = animation_tree
-            .get("parameters/playback")
-            .try_to_object::<AnimationNodeStateMachinePlayback>()
-            .expect("Could not get AnimationNodeStateMachinePlayback");
-
-        animation_tree.set_active(true);
-
+#[methods]
+impl Stats {
+    fn new(_: &Node) -> Self {
         Self {
-            animation_player: animation_player.claim(),
-            animation_tree: animation_tree.claim(),
-            animation_state,
+            max_health: 4,
+            health: 4,
+        }
+    }
+
+    pub fn set_health(this: &mut Stats, _: TRef<Node>, health: i32) {
+        this.health = if health > this.max_health {
+            this.max_health
+        } else {
+            health
         }
     }
 }
 
-#[single_value(extends = Vector2)]
-#[derive(Component)]
+/// Roll Component.
+#[derive(Component, NativeClass, Default)]
+#[inherit(Node)]
+#[user_data(user_data::RwLockData<Roll>)]
+pub struct Roll {
+    #[property(default = 120.0)]
+    pub roll_speed: f32,
+    pub roll_velocity: Vector2,
+}
+#[methods]
+impl Roll {
+    fn new(_: &Node) -> Self {
+        Self {
+            roll_speed: 120.0,
+            ..Default::default()
+        }
+    }
+}
+
+/// Accelerates Component.
+#[derive(Component, NativeClass, Default)]
+#[inherit(Node)]
+#[user_data(user_data::RwLockData<Acceleration>)]
+pub struct Acceleration {
+    #[property(default = 80.0)]
+    pub max_speed: f32,
+    #[property(default = 500.0)]
+    pub acceleration_speed: f32,
+}
+#[methods]
+impl Acceleration {
+    fn new(_: &Node) -> Self {
+        Self {
+            max_speed: 80.0,
+            acceleration_speed: 500.0,
+        }
+    }
+}
+
+/// Friction Component.
+#[derive(Component, NativeClass, Default)]
+#[inherit(Node)]
+#[user_data(user_data::RwLockData<Friction>)]
+pub struct Friction {
+    #[property(default = 400.0)]
+    pub friction: f32,
+}
+#[methods]
+impl Friction {
+    fn new(_: &Node) -> Self {
+        Self { friction: 400.0 }
+    }
+}
+
+/// Velocity Component.
+#[derive(Component, Default)]
 pub struct Velocity {
-    pub value: Vector2,
+    pub velocity: Vector2,
+}
+
+impl Deref for Velocity {
+    type Target = Vector2;
+
+    fn deref(&self) -> &Self::Target {
+        &self.velocity
+    }
+}
+
+impl DerefMut for Velocity {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.velocity
+    }
 }

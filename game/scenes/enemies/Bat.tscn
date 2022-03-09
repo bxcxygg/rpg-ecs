@@ -1,10 +1,14 @@
-[gd_scene load_steps=16 format=2]
+[gd_scene load_steps=20 format=2]
 
 [ext_resource path="res://assets/Enemies/Bat.png" type="Texture" id=1]
 [ext_resource path="res://assets/Shadows/SmallShadow.png" type="Texture" id=2]
+[ext_resource path="res://components/Friction.tscn" type="PackedScene" id=3]
 [ext_resource path="res://scenes/delect_box/Hurtbox.tscn" type="PackedScene" id=4]
 [ext_resource path="res://scenes/enemies/PlayerDelectionZone.tscn" type="PackedScene" id=5]
+[ext_resource path="res://components/Acceleration.tscn" type="PackedScene" id=6]
 [ext_resource path="res://scenes/delect_box/Hitbox.tscn" type="PackedScene" id=7]
+[ext_resource path="res://components/Stats.tscn" type="PackedScene" id=8]
+[ext_resource path="res://scenes/enemies/Bat.gd" type="Script" id=9]
 
 [sub_resource type="AtlasTexture" id=1]
 atlas = ExtResource( 1 )
@@ -50,12 +54,13 @@ radius = 5.0
 [node name="Bat" type="KinematicBody2D"]
 collision_layer = 16
 collision_mask = 17
+script = ExtResource( 9 )
 
 [node name="Sprite" type="AnimatedSprite" parent="."]
 position = Vector2( 0, -12 )
 frames = SubResource( 6 )
 animation = "fly"
-frame = 1
+frame = 2
 playing = true
 
 [node name="ShadowSprite" type="Sprite" parent="."]
@@ -83,6 +88,15 @@ collision_mask = 4
 [node name="CollisionShape2D" parent="Hitbox" index="0"]
 position = Vector2( 0, -15 )
 shape = SubResource( 10 )
+
+[node name="Acceleration" parent="." instance=ExtResource( 6 )]
+max_speed = 50.0
+acceleration = 300.0
+
+[node name="Friction" parent="." instance=ExtResource( 3 )]
+friction = 200.0
+
+[node name="Stats" parent="." instance=ExtResource( 8 )]
 
 [editable path="Hurtbox"]
 [editable path="Zone"]

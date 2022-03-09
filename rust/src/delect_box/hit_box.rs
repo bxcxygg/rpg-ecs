@@ -1,16 +1,18 @@
 use bevy::prelude::Component;
 use gdnative::api::Area2D;
-use gdnative::prelude::{Ref, Vector2};
-use gdrust::macros::gdcomponent;
-use gdrust::unsafe_functions::{NodeExt, RefExt};
+use gdnative::prelude::*;
 
-use crate::components::Damage;
-
-#[gdcomponent(extends = Area2D)]
+#[derive(Component, NativeClass, Default)]
+#[inherit(Area2D)]
+#[user_data(user_data::RwLockData<HitBox>)]
 pub struct HitBox {
-    #[node]
-    pub(crate) node: Ref<Area2D>,
-    #[component("Damage")]
-    pub(crate) damage: Damage,
+    #[property(default = 1)]
+    pub damage: i32,
     pub knockback_vector: Vector2,
+}
+#[methods]
+impl HitBox {
+    fn new(_: &Area2D) -> Self {
+        Default::default()
+    }
 }

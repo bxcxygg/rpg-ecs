@@ -1,33 +1,31 @@
 use std::f64::consts::FRAC_PI_4;
 
-use bevy::prelude::{
-    Bundle, Commands, Component, Entity, EventReader, Query, Res, ResMut, State, Time, Timer, With,
+use bevy::prelude::{Commands, Component, Entity, Query, Res, Time, Timer, Without};
+use gdnative::api::{
+    AnimationNodeStateMachinePlayback, AnimationPlayer, AnimationTree, CollisionShape2D,
+    KinematicBody2D,
 };
-use gdnative::api::{CollisionShape2D, KinematicBody2D};
 use gdnative::prelude::*;
-use gdrust::ecs::engine_sync::components::PlayingGame;
+use gdrust::ecs::engine_sync::components::{GodotObjInstance, GodotObjRef, PlayingGame};
 use gdrust::ecs::engine_sync::resources::PhysicsDelta;
-use gdrust::macros::*;
-use gdrust::unsafe_functions::{NodeExt, RefExt};
+use gdrust::unsafe_functions::{InstanceExt, NodeExt, ObjectExt, RefExt};
 
-use crate::delect_box::hit_box::HitBox;
 use crate::{
-    components::{Acceleration, Animation, Friction, Roll, Stats, Velocity},
+    components::{Acceleration, Friction, Roll, Stats, Velocity},
+    delect_box::hit_box::HitBox,
     delect_box::hurt_box::HurtBox,
+    with_world,
 };
 
 const ATTACK_ANIMATION_LEN: f32 = 0.4;
 const ROLL_ANIMATION_LEN: f32 = 0.5;
 
-pub struct SpawnPlayer {
-    pub node: Ref<Node>,
-}
-
 /// player state.
 /// This is the state of the player.
 /// It is used to determine the player's state.
-#[derive(Eq, PartialEq, Debug, Hash, Copy, Clone)]
+#[derive(Default, PartialEq, Clone, Copy)]
 pub enum PlayerState {
+    #[default]
     MOVE,
     ATTACK,
     ROLL,
@@ -35,79 +33,112 @@ pub enum PlayerState {
 
 /// Player component.
 /// This is the component of the player.
-#[gdcomponent(extends = KinematicBody2D)]
+#[derive(Component, NativeClass, Default, Copy, Clone)]
+#[inherit(KinematicBody2D)]
+#[user_data(user_data::RwLockData<Player>)]
 pub struct Player {
-    #[node]
-    node: Ref<KinematicBody2D>,
+    state: PlayerState,
 }
 
-/// Player bundle.
-/// This is the bundle of the player.
-/// It is used to create the player.
-/// It is used to add the player to the world.
-#[gdbundle]
-pub struct PlayerBundle {
-    #[value(Player::new(node.claim()))]
-    player: Player,
-    #[component("Acceleration")]
-    acceleration: Acceleration,
-    #[component("Friction")]
-    friction: Friction,
-    #[component("Roll")]
-    roll: Roll,
-    #[value(Velocity::new(Vector2::ZERO))]
-    velocity: Velocity,
-    #[component("Stats")]
-    stats: Stats,
-    #[value(Animation::new(node))]
-    animation_tree: Animation,
-    #[component("HixboxPivot/SwordHitbox")]
-    sword_hitbox: HitBox,
-    #[component("Hurtbox")]
-    hurt_box: HurtBox,
-}
+#[methods]
+impl Player {
+    fn new(_owner: TRef<KinematicBody2D>) -> Self {
+        Default::default()
+    }
 
-/// Add Player Node Event.
-/// This event is used to add the player node to the scene.
-pub fn add_player_system(mut commands: Commands, mut event: EventReader<SpawnPlayer>) {
-    for SpawnPlayer { node } in event.iter() {
-        node.expect_safe()
-            .expect_node::<CollisionShape2D, &str>("HixboxPivot/SwordHitbox/CollisionShape2D")
+    #[export]
+    fn _ready(&self, owner: TRef<KinematicBody2D>) {
+        let animation_tree = owner.expect_node::<AnimationTree>("AnimationTree");
+        let animation_player = owner.expect_node::<AnimationPlayer>("AnimationPlayer");
+
+        animation_tree.set_active(true);
+
+        owner
+            .expect_node::<CollisionShape2D>("HixboxPivot/SwordHitbox/CollisionShape2D")
             .set_disabled(true);
 
-        commands
-            .spawn_bundle(PlayerBundle::new(node.clone()))
-            .insert(PlayingGame);
+        // Add player to ECS.
+        with_world(|w| {
+            let animation_state = animation_tree
+                .get("parameters/playback")
+                .try_to_object::<AnimationNodeStateMachinePlayback>()
+                .expect("Could not get AnimationNodeStateMachinePlayback");
+
+            w.spawn()
+                .insert(GodotObjInstance::new(
+                    owner.expect_as_instance::<Player>().claim(),
+                ))
+                .insert(GodotObjInstance::new(
+                    owner
+                        .expect_instance::<Acceleration>("Acceleration")
+                        .claim(),
+                ))
+                .insert(GodotObjInstance::new(
+                    owner.expect_instance::<Friction>("Friction").claim(),
+                ))
+                .insert(GodotObjInstance::new(
+                    owner.expect_instance::<Roll>("Roll").claim(),
+                ))
+                .insert(GodotObjInstance::new(
+                    owner.expect_instance::<Stats>("Stats").claim(),
+                ))
+                .insert(GodotObjInstance::new(
+                    owner
+                        .expect_instance::<HitBox>("HixboxPivot/SwordHitbox")
+                        .claim(),
+                ))
+                .insert(GodotObjInstance::new(
+                    owner.expect_instance::<HurtBox>("Hurtbox").claim(),
+                ))
+                .insert(GodotObjRef::new(animation_tree.claim()))
+                .insert(GodotObjRef::new(animation_player.claim()))
+                .insert(GodotObjRef::new(animation_state))
+                .insert(Velocity::default())
+                .insert(PlayingGame);
+        });
     }
 }
 
 /// Player state system.
 /// This system is used to determine the player's state.
-pub fn player_state_system(
-    mut state: ResMut<State<PlayerState>>,
-    mut commands: Commands,
-    time: Res<Time>,
-    mut animation: Query<(Entity, &mut Velocity, &mut Timer), With<Player>>,
-) {
-    if state.current().eq(&PlayerState::MOVE) {
-        let input = Input::godot_singleton();
-        if input.is_action_just_pressed("attack", false) {
-            state.set(PlayerState::ATTACK).unwrap();
-        }
-        if input.is_action_just_pressed("roll", false) {
-            state.set(PlayerState::ROLL).unwrap();
+pub fn player_state_system(player: Query<&GodotObjInstance<Player>>) {
+    let input = Input::godot_singleton();
+
+    for player in player.iter() {
+        let player = player.expect_safe();
+        let state = player.map(|p, _| p.state).unwrap_or(PlayerState::MOVE);
+
+        if state == PlayerState::MOVE {
+            if input.is_action_just_pressed("attack", false) {
+                player
+                    .map_mut(|p, _| p.state = PlayerState::ATTACK)
+                    .unwrap();
+            }
+            if input.is_action_just_pressed("roll", false) {
+                player.map_mut(|p, _| p.state = PlayerState::ROLL).unwrap();
+            }
         }
     }
+}
 
-    for (entity, mut velocity, mut timer) in animation.iter_mut() {
+pub fn player_timer_system(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut animation: Query<(Entity, &mut Velocity, &mut Timer, &GodotObjInstance<Player>)>,
+) {
+    for (entity, mut velocity, mut timer, player) in animation.iter_mut() {
+        let player = player.expect_safe();
+
         timer.tick(time.delta());
         if timer.finished() {
-            commands.entity(entity).remove::<Timer>();
-            state.set(PlayerState::MOVE).unwrap();
-
-            if state.current().eq(&PlayerState::ROLL) {
-                (*velocity).value = Vector2::ZERO;
+            let state = player
+                .map(|p, _| p.state.clone())
+                .unwrap_or(PlayerState::MOVE);
+            if state == PlayerState::ROLL {
+                velocity.velocity = Vector2::ZERO;
             }
+            commands.entity(entity).remove::<Timer>();
+            player.map_mut(|p, _| p.state = PlayerState::MOVE).unwrap();
         }
     }
 }
@@ -116,53 +147,73 @@ pub fn player_state_system(
 /// This system is used to change player's velocity.
 pub fn player_move_system(
     delta: Res<PhysicsDelta>,
-    mut query0: Query<
-        (
-            &mut HitBox,
-            &Animation,
-            &mut Velocity,
-            &Acceleration,
-            &Friction,
-            &mut Roll,
-        ),
-        With<Player>,
-    >,
+    mut player: Query<(
+        &mut Velocity,
+        &GodotObjInstance<HitBox>,
+        &GodotObjRef<AnimationTree>,
+        &GodotObjRef<AnimationNodeStateMachinePlayback>,
+        &GodotObjInstance<Acceleration>,
+        &GodotObjInstance<Friction>,
+        &GodotObjInstance<Roll>,
+        &GodotObjInstance<Player>,
+    )>,
 ) {
-    for (mut sword_hitbox, animation, mut velocity, acceleration, friction, mut roll) in
-        query0.iter_mut()
+    for (
+        mut velocity,
+        hitbox,
+        animation_tree,
+        animation_state,
+        acceleration,
+        friction,
+        roll,
+        player,
+    ) in player.iter_mut()
     {
-        let input = Input::godot_singleton();
-        let mut input_vector = Vector2::new(
-            input.get_action_strength("ui_right", false) as f32
-                - input.get_action_strength("ui_left", false) as f32,
-            input.get_action_strength("ui_down", false) as f32
-                - input.get_action_strength("ui_up", false) as f32,
-        );
+        let state = player.expect_safe().map(|p, _| p.state.clone()).unwrap();
+        if state == PlayerState::MOVE {
+            let hitbox = hitbox.expect_safe();
+            let roll = roll.expect_safe();
+            let animation_tree = animation_tree.expect_safe();
+            let animation_state = animation_state.expect_safe();
+            let acceleration = acceleration.expect_safe();
 
-        if input_vector != Vector2::ZERO {
-            input_vector = input_vector.normalized();
-            sword_hitbox.knockback_vector = input_vector;
-            roll.roll_velocity = input_vector;
-
-            let animation_tree = animation.animation_tree.expect_safe();
-            let animation_state = animation.animation_state.expect_safe();
-
-            animation_tree.set("parameters/Idle/blend_position", input_vector);
-            animation_tree.set("parameters/Run/blend_position", input_vector);
-            animation_tree.set("parameters/Attack/blend_position", input_vector);
-            animation_tree.set("parameters/Roll/blend_position", input_vector);
-
-            animation_state.travel("Run");
-
-            (*velocity).value = velocity.move_toward(
-                input_vector * acceleration.max_speed,
-                acceleration.acceleration * delta.value,
+            let input = Input::godot_singleton();
+            let mut input_vector = Vector2::new(
+                input.get_action_strength("ui_right", false) as f32
+                    - input.get_action_strength("ui_left", false) as f32,
+                input.get_action_strength("ui_down", false) as f32
+                    - input.get_action_strength("ui_up", false) as f32,
             );
-        } else {
-            let animation_state = animation.animation_state.expect_safe();
-            animation_state.travel("Idle");
 
-            (*velocity).value = velocity.move_toward(Vector2::ZERO, friction.value * delta.value);
+            if input_vector != Vector2::ZERO {
+                input_vector = input_vector.normalized();
+                hitbox
+                    .map_mut(|h, _| h.knockback_vector = input_vector)
+                    .unwrap();
+                roll.map_mut(|r, _| r.roll_velocity = input_vector).unwrap();
+
+                animation_tree.set("parameters/Idle/blend_position", input_vector);
+                animation_tree.set("parameters/Run/blend_position", input_vector);
+                animation_tree.set("parameters/Attack/blend_position", input_vector);
+                animation_tree.set("parameters/Roll/blend_position", input_vector);
+
+                animation_state.travel("Run");
+
+                velocity.velocity = velocity.move_toward(
+                    acceleration.map(|a, _| input_vector * a.max_speed).unwrap(),
+                    acceleration
+                        .map(|a, _| a.acceleration_speed * delta.value)
+                        .unwrap(),
+                );
+            } else {
+                animation_state.travel("Idle");
+
+                let friction = friction.expect_safe();
+                velocity.velocity = velocity.move_toward(
+                    Vector2::ZERO,
+                    friction.map(|f, _| f.friction * delta.value).unwrap(),
+                );
+            }
         }
     }
 }
@@ -171,15 +222,26 @@ pub fn player_move_system(
 /// This system is used to attack the player.
 pub fn player_attack_system(
     mut commands: Commands,
-    mut query: Query<(Entity, &mut Velocity, &Animation), With<Player>>,
+    mut query: Query<
+        (
+            Entity,
+            &mut Velocity,
+            &GodotObjRef<AnimationNodeStateMachinePlayback>,
+            &GodotObjInstance<Player>,
+        ),
+        Without<Timer>,
+    >,
 ) {
-    for (entity, mut velocity, animation) in query.iter_mut() {
-        (*velocity).value = Vector2::ZERO;
-        animation.animation_state.expect_safe().travel("Attack");
+    for (entity, mut velocity, animation_state, player) in query.iter_mut() {
+        let state = player.expect_safe().map(|p, _| p.state.clone()).unwrap();
+        if state == PlayerState::ATTACK {
+            velocity.velocity = Vector2::ZERO;
+            animation_state.expect_safe().travel("Attack");
 
-        commands
-            .entity(entity)
-            .insert(Timer::from_seconds(ATTACK_ANIMATION_LEN, false));
+            commands
+                .entity(entity)
+                .insert(Timer::from_seconds(ATTACK_ANIMATION_LEN, false));
+        }
     }
 }
 
@@ -187,29 +249,41 @@ pub fn player_attack_system(
 /// This system is used to roll the player.
 pub fn player_roll_system(
     mut commands: Commands,
-    mut query: Query<(Entity, &mut Velocity, &Animation, &Roll), With<Player>>,
+    mut query: Query<
+        (
+            Entity,
+            &mut Velocity,
+            &GodotObjRef<AnimationNodeStateMachinePlayback>,
+            &GodotObjInstance<Roll>,
+            &GodotObjInstance<Player>,
+        ),
+        Without<Timer>,
+    >,
 ) {
-    for (entity, mut velocity, animation, roll) in query.iter_mut() {
-        (*velocity).value = roll.roll_velocity * roll.roll_speed;
-        animation.animation_state.expect_safe().travel("Roll");
+    for (entity, mut velocity, animation_state, roll, player) in query.iter_mut() {
+        let state = player.expect_safe().map(|p, _| p.state.clone()).unwrap();
+        if state == PlayerState::ROLL {
+            let roll = roll.expect_safe();
 
-        commands
-            .entity(entity)
-            .insert(Timer::from_seconds(ROLL_ANIMATION_LEN, false));
+            velocity.velocity = roll.map(|r, _| r.roll_velocity * r.roll_speed).unwrap();
+            animation_state.expect_safe().travel("Roll");
+
+            commands
+                .entity(entity)
+                .insert(Timer::from_seconds(ROLL_ANIMATION_LEN, false));
+        }
     }
 }
 
 /// Player Move System.
 /// This system is used to move the player.
-pub fn player_movement_system(mut query: Query<(&mut Velocity, &Player)>) {
+pub fn player_movement_system(mut query: Query<(&mut Velocity, &GodotObjInstance<Player>)>) {
     for (mut velocity, player) in query.iter_mut() {
-        (*velocity).value = player.node.expect_safe().move_and_slide(
-            (*velocity).value,
-            Vector2::ZERO,
-            false,
-            4,
-            FRAC_PI_4,
-            true,
-        );
+        velocity.velocity = player
+            .expect_safe()
+            .map(|_, o| {
+                o.move_and_slide(velocity.velocity, Vector2::ZERO, false, 4, FRAC_PI_4, true)
+            })
+            .unwrap();
     }
 }
