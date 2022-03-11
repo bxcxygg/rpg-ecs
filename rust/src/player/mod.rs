@@ -10,8 +10,6 @@ impl Plugin for PlayerPlugin {
         app.add_system(player_state_system)
             .add_system(player_timer_system)
             .add_system(player_move_system)
-            .add_system(player_attack_system)
-            .add_system(player_roll_system)
             .add_system_to_stage(SyncStages::UpdateBevyPhysics, player_movement_system);
     }
 }

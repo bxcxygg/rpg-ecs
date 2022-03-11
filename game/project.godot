@@ -13,21 +13,9 @@ _global_script_classes=[ {
 "class": "ECSController",
 "language": "NativeScript",
 "path": "res://native/ECSController.gdns"
-}, {
-"base": "Node",
-"class": "Friction",
-"language": "NativeScript",
-"path": "res://components/Friction.gdns"
-}, {
-"base": "KinematicBody2D",
-"class": "Player",
-"language": "NativeScript",
-"path": "res://scenes/player/Player.gdns"
 } ]
 _global_script_class_icons={
-"ECSController": "",
-"Friction": "",
-"Player": ""
+"ECSController": ""
 }
 
 [application]

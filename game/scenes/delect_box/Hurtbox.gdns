@@ -4,5 +4,5 @@
 
 [resource]
 resource_name = "Hurtbox"
-class_name = "HurtBox"
+class_name = "HurtBoxBundle"
 library = ExtResource( 1 )

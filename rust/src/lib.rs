@@ -3,16 +3,15 @@
 mod app;
 mod components;
 mod delect_box;
-// mod effect;
 // mod enemy;
+mod effect;
 mod player;
 // mod world;
 
 use crate::app::{init_ecs, with_schedule, with_world};
-use crate::components::{Acceleration, Friction, Roll, Stats};
-use crate::delect_box::hit_box::HitBox;
-use crate::delect_box::hurt_box::HurtBox;
-use crate::player::{Player, PlayerPlugin};
+use crate::delect_box::hit_box::HitBoxBundle;
+use crate::delect_box::hurt_box::HurtBoxBundle;
+use crate::player::{PlayerBundle, PlayerPlugin};
 use bevy::app::App;
 use bevy::prelude::{Plugin, Stage};
 use gdnative::prelude::*;
@@ -74,13 +73,9 @@ impl Plugin for GamePlugin {
 
 fn init(handle: InitHandle) {
     handle.add_class::<ECSController>();
-    handle.add_class::<HitBox>();
-    handle.add_class::<HurtBox>();
-    handle.add_class::<Acceleration>();
-    handle.add_class::<Friction>();
-    handle.add_class::<Roll>();
-    handle.add_class::<Stats>();
-    handle.add_class::<Player>();
+    handle.add_class::<HitBoxBundle>();
+    handle.add_class::<HurtBoxBundle>();
+    handle.add_class::<PlayerBundle>();
 
     init_ecs(GamePlugin);
 }

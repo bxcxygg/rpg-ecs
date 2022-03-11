@@ -18,3 +18,4 @@ bevy = { version = "0.6"}
 gdrust = { git = "https://github.com/fringelin/gdrust.git" }
 rand = "0.8.4"
 lazy_static = "1.4.0"
+defaults = "0.2.0"

@@ -4,6 +4,5 @@
 
 [resource]
 resource_name = "Player"
-class_name = "Player"
+class_name = "PlayerBundle"
 library = ExtResource( 1 )
-script_class_name = "Player"

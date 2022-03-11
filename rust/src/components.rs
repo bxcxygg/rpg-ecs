@@ -1,93 +1,77 @@
 use bevy::prelude::Component;
+use defaults::Defaults;
+use gdnative::export::Export;
 use gdnative::prelude::*;
 use std::ops::{Deref, DerefMut};
 
 /// Stats Component.
-#[derive(Component, NativeClass, Default)]
-#[inherit(Node)]
-#[user_data(user_data::RwLockData<Stats>)]
+#[derive(Component, Defaults, ToVariant, FromVariant, Copy, Clone)]
 pub struct Stats {
-    #[property(default = 4)]
+    #[def = "4"]
     pub max_health: i32,
-    #[property(default = 4, get, set = "Self::set_health")]
+    #[def = "4"]
     pub health: i32,
 }
-#[methods]
-impl Stats {
-    fn new(_: &Node) -> Self {
-        Self {
-            max_health: 4,
-            health: 4,
-        }
-    }
-
-    pub fn set_health(this: &mut Stats, _: TRef<Node>, health: i32) {
-        this.health = if health > this.max_health {
-            this.max_health
-        } else {
-            health
-        }
+impl Export for Stats {
+    type Hint = ();
+    fn export_info(_hint: Option<Self::Hint>) -> ExportInfo {
+        ExportInfo::new(VariantType::Dictionary)
     }
 }
 
 /// Roll Component.
-#[derive(Component, NativeClass, Default)]
-#[inherit(Node)]
-#[user_data(user_data::RwLockData<Roll>)]
+#[derive(Component, Defaults, ToVariant, FromVariant, Copy, Clone)]
 pub struct Roll {
-    #[property(default = 120.0)]
+    #[def = "120.0"]
     pub roll_speed: f32,
     pub roll_velocity: Vector2,
 }
-#[methods]
-impl Roll {
-    fn new(_: &Node) -> Self {
-        Self {
-            roll_speed: 120.0,
-            ..Default::default()
-        }
+impl Export for Roll {
+    type Hint = ();
+    fn export_info(_hint: Option<Self::Hint>) -> ExportInfo {
+        ExportInfo::new(VariantType::Dictionary)
     }
 }
 
 /// Accelerates Component.
-#[derive(Component, NativeClass, Default)]
-#[inherit(Node)]
-#[user_data(user_data::RwLockData<Acceleration>)]
+#[derive(Component, Defaults, ToVariant, FromVariant, Copy, Clone)]
 pub struct Acceleration {
-    #[property(default = 80.0)]
+    #[def = "80.0"]
     pub max_speed: f32,
-    #[property(default = 500.0)]
-    pub acceleration_speed: f32,
+    #[def = "500.0"]
+    pub acceleration: f32,
 }
-#[methods]
-impl Acceleration {
-    fn new(_: &Node) -> Self {
-        Self {
-            max_speed: 80.0,
-            acceleration_speed: 500.0,
-        }
+impl Export for Acceleration {
+    type Hint = ();
+    fn export_info(_hint: Option<Self::Hint>) -> ExportInfo {
+        ExportInfo::new(VariantType::Dictionary)
     }
 }
 
 /// Friction Component.
-#[derive(Component, NativeClass, Default)]
-#[inherit(Node)]
-#[user_data(user_data::RwLockData<Friction>)]
+#[derive(Component, Defaults, ToVariant, FromVariant, Copy, Clone)]
 pub struct Friction {
-    #[property(default = 400.0)]
+    #[def = "400.0"]
     pub friction: f32,
 }
-#[methods]
-impl Friction {
-    fn new(_: &Node) -> Self {
-        Self { friction: 400.0 }
+impl Export for Friction {
+    type Hint = ();
+    fn export_info(_hint: Option<Self::Hint>) -> ExportInfo {
+        ExportInfo::new(VariantType::Dictionary)
     }
 }
 
 /// Velocity Component.
-#[derive(Component, Default)]
+#[derive(Component, Default, Copy, Clone)]
 pub struct Velocity {
     pub velocity: Vector2,
+}
+
+impl Velocity {
+    #[inline]
+    fn into_inner(self) -> Vector2 {
+        self.velocity
+    }
 }
 
 impl Deref for Velocity {
