@@ -1,6 +1,5 @@
 [package]
 name = "rpg_ecs"
-#name = "template"
 version = "0.1.0"
 authors = ["yan <3200828584@qq.com>"]
 edition = "2021"
@@ -14,7 +13,7 @@ dev = [
 
 [dependencies]
 gdnative = { git = "https://github.com/godot-rust/godot-rust.git", features = ["formatted"] }
-bevy = { version = "0.6"}
+bevy = { version = "0.6", default-features = false }
 gdrust = { git = "https://github.com/fringelin/gdrust.git" }
 rand = "0.8.4"
 lazy_static = "1.4.0"

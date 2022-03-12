@@ -67,13 +67,6 @@ pub struct Velocity {
     pub velocity: Vector2,
 }
 
-impl Velocity {
-    #[inline]
-    fn into_inner(self) -> Vector2 {
-        self.velocity
-    }
-}
-
 impl Deref for Velocity {
     type Target = Vector2;
 
@@ -86,4 +79,10 @@ impl DerefMut for Velocity {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.velocity
     }
+}
+
+/// Knockback Component.
+#[derive(Component, Default, Copy, Clone)]
+pub struct Knockback {
+    pub vector: Vector2,
 }

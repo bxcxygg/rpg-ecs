@@ -3,15 +3,22 @@
 mod app;
 mod components;
 mod delect_box;
-// mod enemy;
 mod effect;
+mod enemy;
 mod player;
-// mod world;
+mod world;
 
 use crate::app::{init_ecs, with_schedule, with_world};
-use crate::delect_box::hit_box::HitBoxBundle;
-use crate::delect_box::hurt_box::HurtBoxBundle;
+use crate::delect_box::hit_box::HitBox;
+use crate::delect_box::hurt_box::HurtBox;
+use crate::effect::EffectPlugin;
+use crate::enemy::bat::BatBundle;
+use crate::enemy::EnemyPlugin;
 use crate::player::{PlayerBundle, PlayerPlugin};
+use crate::world::grass::Grass;
+use crate::world::health::HealthBundle;
+use crate::world::world::WorldBundle;
+use crate::world::WorldPlugin;
 use bevy::app::App;
 use bevy::prelude::{Plugin, Stage};
 use gdnative::prelude::*;
@@ -67,15 +74,22 @@ impl ECSController {
 struct GamePlugin;
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(PlayerPlugin);
+        app.add_plugin(WorldPlugin)
+            .add_plugin(PlayerPlugin)
+            .add_plugin(EnemyPlugin)
+            .add_plugin(EffectPlugin);
     }
 }
 
 fn init(handle: InitHandle) {
     handle.add_class::<ECSController>();
-    handle.add_class::<HitBoxBundle>();
-    handle.add_class::<HurtBoxBundle>();
+    handle.add_class::<HitBox>();
+    handle.add_class::<HurtBox>();
     handle.add_class::<PlayerBundle>();
+    handle.add_class::<BatBundle>();
+    handle.add_class::<Grass>();
+    handle.add_class::<WorldBundle>();
+    handle.add_class::<HealthBundle>();
 
     init_ecs(GamePlugin);
 }

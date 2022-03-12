@@ -3,6 +3,6 @@
 [ext_resource path="res://native/game.gdnlib" type="GDNativeLibrary" id=1]
 
 [resource]
-resource_name = "Hurtbox"
-class_name = "HurtBox"
+resource_name = "GrassBundle"
+class_name = "Grass"
 library = ExtResource( 1 )

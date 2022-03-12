@@ -1,6 +1,8 @@
 use std::f64::consts::FRAC_PI_4;
 
-use bevy::prelude::{Bundle, Commands, Component, Entity, Query, Res, Time, Timer, With};
+use bevy::prelude::{
+    Bundle, Commands, Component, Entity, EventWriter, Query, Res, Time, Timer, With, Without,
+};
 use defaults::Defaults;
 use gdnative::api::{
     AnimationNodeStateMachinePlayback, AnimationPlayer, AnimationTree, CollisionShape2D,
@@ -12,8 +14,10 @@ use gdrust::ecs::engine_sync::resources::PhysicsDelta;
 use gdrust::macros::*;
 use gdrust::unsafe_functions::{NodeExt, RefExt};
 
-use crate::delect_box::hit_box::{HitBoxBundle, Knockback};
-use crate::delect_box::hurt_box::HurtBoxBundle;
+use crate::delect_box::hit_box::HitBox;
+use crate::delect_box::hurt_box::HurtBox;
+use crate::enemy::bat::Bat;
+use crate::world::health::ChangeHealth;
 use crate::{
     components::{Acceleration, Friction, Roll, Stats, Velocity},
     with_world,
@@ -33,12 +37,17 @@ pub enum PlayerState {
     ROLL,
 }
 
+#[derive(Component, Default, Clone, Copy)]
+pub struct PlayerBeenAttack;
+#[derive(Component, Default, Clone, Copy)]
+pub struct PlayerAttacking;
+
 /// Player Component.
 /// This is the component of the player.
 #[derive(Component, Defaults, Clone, Copy)]
 pub struct Player {
     #[def = "KinematicBody2D::new().into_shared()"]
-    owner: Ref<KinematicBody2D>,
+    pub owner: Ref<KinematicBody2D>,
 }
 
 /// Player bundle.
@@ -81,15 +90,15 @@ impl PlayerBundle {
 
             w.spawn()
                 .insert_bundle(self.clone())
-                .insert_bundle(
+                .insert(
                     owner
-                        .expect_instance::<HitBoxBundle>("HixboxPivot/SwordHitbox")
+                        .expect_instance::<HitBox>("HixboxPivot/SwordHitbox")
                         .map(|h, _| h.clone())
                         .unwrap(),
                 )
-                .insert_bundle(
+                .insert(
                     owner
-                        .expect_instance::<HurtBoxBundle>("Hurtbox")
+                        .expect_instance::<HurtBox>("Hurtbox")
                         .map(|h, _| h.clone())
                         .unwrap(),
                 )
@@ -122,7 +131,7 @@ pub fn player_state_system(mut player: Query<&mut PlayerState, With<Player>>) {
 pub fn player_timer_system(
     mut commands: Commands,
     time: Res<Time>,
-    mut player: Query<(Entity, &mut Velocity, &mut Timer, &mut PlayerState)>,
+    mut player: Query<(Entity, &mut Velocity, &mut Timer, &mut PlayerState), With<Player>>,
 ) {
     for (entity, mut velocity, mut timer, mut state) in player.iter_mut() {
         timer.tick(time.delta());
@@ -141,25 +150,28 @@ pub fn player_timer_system(
 pub fn player_move_system(
     mut commands: Commands,
     delta: Res<PhysicsDelta>,
-    mut player: Query<(
-        Entity,
-        &GodotObjRef<AnimationTree>,
-        &GodotObjRef<AnimationNodeStateMachinePlayback>,
-        &mut Velocity,
-        &mut Knockback,
-        &Acceleration,
-        &Friction,
-        &mut Roll,
-        &PlayerState,
-        Option<&Timer>,
-    )>,
+    mut player: Query<
+        (
+            Entity,
+            &GodotObjRef<AnimationTree>,
+            &GodotObjRef<AnimationNodeStateMachinePlayback>,
+            &mut Velocity,
+            &mut HitBox,
+            &Acceleration,
+            &Friction,
+            &mut Roll,
+            &PlayerState,
+            Option<&Timer>,
+        ),
+        With<Player>,
+    >,
 ) {
     for (
         entity,
         animation_tree,
         animation_state,
         mut velocity,
-        mut knockback,
+        mut hitbox,
         acceleration,
         friction,
         mut roll,
@@ -171,7 +183,7 @@ pub fn player_move_system(
             PlayerState::MOVE => player_move(
                 animation_tree.expect_safe(),
                 animation_state.expect_safe(),
-                &mut *knockback,
+                &mut *hitbox,
                 &mut *roll,
                 &mut *velocity,
                 acceleration,
@@ -206,7 +218,7 @@ pub fn player_move_system(
 fn player_move(
     animation_tree: TRef<AnimationTree>,
     animation_state: TRef<AnimationNodeStateMachinePlayback>,
-    knock: &mut Knockback,
+    hitbox: &mut HitBox,
     roll: &mut Roll,
     velocity: &mut Velocity,
     acceleration: &Acceleration,
@@ -223,7 +235,7 @@ fn player_move(
 
     if input_vector != Vector2::ZERO {
         input_vector = input_vector.normalized();
-        knock.vector = input_vector;
+        hitbox.knockback = input_vector;
         roll.roll_velocity = input_vector;
 
         animation_tree.set("parameters/Idle/blend_position", input_vector);
@@ -288,5 +300,64 @@ pub fn player_movement_system(mut query: Query<(&mut Velocity, &Player)>) {
             FRAC_PI_4,
             true,
         );
+    }
+}
+
+pub fn attack_player_system(
+    mut commands: Commands,
+    mut event: EventWriter<ChangeHealth>,
+    mut player: Query<(&mut Stats, &HurtBox), With<Player>>,
+    enemy: Query<(Entity, &HitBox), (With<Bat>, Without<PlayerBeenAttack>)>,
+) {
+    for (mut stats, hurtbox) in player.iter_mut() {
+        let hurtbox = hurtbox.owner.expect_safe();
+
+        for (bat_entity, hitbox) in enemy.iter() {
+            let hitbox = hitbox.owner.expect_safe();
+
+            if hurtbox.overlaps_area(hitbox) {
+                stats.health -= 1;
+
+                event.send(ChangeHealth {
+                    health: stats.health,
+                });
+
+                commands.entity(bat_entity).insert(PlayerBeenAttack);
+            }
+        }
+    }
+}
+
+pub fn attack_player_exit_system(
+    mut commands: Commands,
+    player: Query<&HurtBox, With<Player>>,
+    enemy: Query<(Entity, &HitBox), (With<Bat>, With<PlayerBeenAttack>)>,
+) {
+    for hurtbox in player.iter() {
+        let hurtbox = hurtbox.owner.expect_safe();
+
+        for (entity, hitbox) in enemy.iter() {
+            let hitbox = hitbox.owner.expect_safe();
+
+            if !hurtbox.overlaps_area(hitbox) {
+                commands.entity(entity).remove::<PlayerBeenAttack>();
+            }
+        }
+    }
+}
+
+pub fn player_no_health_system(
+    mut commands: Commands,
+    // mut game_over: ResMut<Option<GameOver>>,
+    player: Query<(Entity, &mut Stats, &Player)>,
+) {
+    for (entity, stats, player) in player.iter() {
+        let player = player.owner.expect_safe();
+        if stats.health == 0 {
+            commands.entity(entity).despawn();
+            player.queue_free();
+
+            // *game_over = Some(GameOver::Lose);
+        }
     }
 }
