@@ -1,11 +1,13 @@
 use crate::components::{Acceleration, Friction, Knockback, Stats, Velocity};
 use crate::delect_box::hit_box::HitBox;
 use crate::delect_box::hurt_box::{HurtBox, HIT_EFFECT_LENGTH};
+use crate::delect_box::soft_collision::SoftCollision;
 use crate::effect::{add_effect, Effect};
+use crate::enemy::wander_controller::WanderTimer;
 use crate::enemy::DelectionZone;
 use crate::player::{Player, PlayerAttacking};
-use crate::with_world;
-use bevy::prelude::{Bundle, Commands, Component, Entity, Query, Res, With, Without};
+use crate::{with_world, WanderController};
+use bevy::prelude::{Bundle, Commands, Component, Entity, Query, Res, Timer, With, Without};
 use defaults::Defaults;
 use gdnative::api::{AnimatedSprite, Area2D, KinematicBody2D};
 use gdnative::prelude::*;
@@ -13,7 +15,11 @@ use gdrust::ecs::engine_sync::components::{GodotObjRef, PlayingGame};
 use gdrust::ecs::engine_sync::resources::PhysicsDelta;
 use gdrust::macros::*;
 use gdrust::unsafe_functions::{NodeExt, NodeTreeExt, RefExt, ResourceLoaderExt};
+use rand::prelude::SliceRandom;
+use rand::Rng;
 use std::f64::consts::FRAC_PI_4;
+use std::ops::Range;
+use std::time::Duration;
 
 const ENEMY_DEATH_LENGTH: f32 = 9. / 15.;
 
@@ -76,6 +82,19 @@ impl BatBundle {
                         .map(|h, _| h.clone())
                         .unwrap(),
                 )
+                .insert(
+                    owner
+                        .expect_instance::<SoftCollision>("SoftCollision")
+                        .map(|h, _| h.clone())
+                        .unwrap(),
+                )
+                .insert(
+                    owner
+                        .expect_instance::<WanderController>("WanderController")
+                        .map(|h, _| h.clone())
+                        .unwrap(),
+                )
+                .insert(WanderTimer(Timer::from_seconds(3., false)))
                 .insert(GodotObjRef::new(
                     owner.expect_node::<AnimatedSprite>("Sprite").claim(),
                 ))
@@ -99,13 +118,28 @@ pub fn bat_system(
         &Bat,
         &Acceleration,
         &GodotObjRef<AnimatedSprite>,
+        &mut WanderTimer,
+        &WanderController,
     )>,
 ) {
-    for (mut velocity, friction, delect_zone, mut state, bat, acceleration, sprite) in
-        bat.iter_mut()
+    for (
+        mut velocity,
+        friction,
+        delect_zone,
+        mut state,
+        bat,
+        acceleration,
+        sprite,
+        mut timer,
+        wander_controller,
+    ) in bat.iter_mut()
     {
         match *state {
-            BatState::IDLE => bat_idle(&mut *velocity, friction, delect_zone, &mut *state, &delta),
+            BatState::IDLE => {
+                velocity.velocity =
+                    velocity.move_toward(Vector2::ZERO, friction.friction * delta.value);
+                bat_idle_or_wander(delect_zone, &mut *state, &mut timer.0);
+            }
             BatState::CHASE => bat_chase(
                 &mut *velocity,
                 acceleration,
@@ -115,24 +149,41 @@ pub fn bat_system(
                 sprite,
                 &delta,
             ),
-            _ => (),
+            BatState::WANDER => {
+                bat_idle_or_wander(delect_zone, &mut *state, &mut timer.0);
+                let direction = bat
+                    .owner
+                    .expect_safe()
+                    .global_position()
+                    .direction_to(wander_controller.target_position);
+
+                velocity.velocity = velocity.move_toward(
+                    direction * acceleration.max_speed,
+                    acceleration.acceleration * delta.value,
+                );
+            }
         }
     }
 }
 
 /// Bat Idle State System.
 /// This system is responsible for the bat's idle state.
-pub fn bat_idle(
-    velocity: &mut Velocity,
-    friction: &Friction,
-    delect_zone: &DelectionZone,
-    state: &mut BatState,
-    delta: &PhysicsDelta,
-) {
-    velocity.velocity = velocity.move_toward(Vector2::ZERO, friction.friction * delta.value);
-
+pub fn bat_idle_or_wander(delect_zone: &DelectionZone, state: &mut BatState, timer: &mut Timer) {
     if delect_zone.player.is_some() {
         *state = BatState::CHASE;
+        ()
+    }
+
+    if timer.percent_left() == 0. {
+        let mut rng = rand::thread_rng();
+        let mut state_list: [BatState; 2] = [BatState::IDLE, BatState::WANDER];
+        state_list.shuffle(&mut rng);
+        *state = state_list[0];
+
+        timer.set_duration(Duration::from_secs_f32(
+            rng.gen_range(Range { start: 1., end: 3. }),
+        ));
+        timer.reset();
     }
 }
 
@@ -152,7 +203,11 @@ pub fn bat_chase(
 ) {
     if let Some(player) = delect_zone.player {
         let player_pos = player.expect_safe().global_position();
-        let direction = (player_pos - bat.owner.expect_safe().global_position()).normalized();
+        let direction = bat
+            .owner
+            .expect_safe()
+            .global_position()
+            .direction_to(player_pos);
 
         velocity.velocity = velocity.move_toward(
             direction * acceleration.max_speed,
@@ -170,16 +225,21 @@ pub fn bat_chase(
 /// This system is responsible for the bat's movement.
 /// The bat will move according to the velocity.
 pub fn bat_move_system(
-    mut query: Query<(&mut Velocity, &mut BatKnockback, &Bat)>,
+    mut query: Query<(&mut Velocity, &mut BatKnockback, &Bat, &SoftCollision)>,
     delta: Res<PhysicsDelta>,
 ) {
-    for (mut velocity, mut knockback, bat) in query.iter_mut() {
+    for (mut velocity, mut knockback, bat, soft_collision) in query.iter_mut() {
         let bat = bat.owner.expect_safe();
         knockback.0.vector = knockback
             .0
             .vector
             .move_toward(Vector2::ZERO, 200. * delta.value);
         bat.move_and_slide(knockback.0.vector, Vector2::ZERO, false, 4, FRAC_PI_4, true);
+
+        // let soft_collision_area = soft_collision.owner.expect_safe();
+        // if !soft_collision_area.get_overlapping_areas().is_empty() {
+        velocity.velocity += soft_collision.input_vector;
+        // }
 
         velocity.velocity =
             bat.move_and_slide(velocity.velocity, Vector2::ZERO, false, 4, FRAC_PI_4, true);

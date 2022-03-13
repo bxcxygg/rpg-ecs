@@ -1,4 +1,6 @@
+use crate::delect_box::soft_collision::soft_collision_system;
 use crate::enemy::bat::{attack_bat_system, attack_exit_bat_system, bat_move_system, bat_system};
+use crate::enemy::wander_controller::update_target_position_system;
 use crate::player::Player;
 use bevy::app::Plugin;
 use bevy::prelude::{Component, ParallelSystemDescriptorCoercion, Query};
@@ -9,6 +11,7 @@ use gdrust::ecs::engine_sync::stages::SyncStages;
 use gdrust::unsafe_functions::RefExt;
 
 pub mod bat;
+pub mod wander_controller;
 
 #[derive(Component, Defaults, Copy, Clone)]
 pub struct DelectionZone {
@@ -42,6 +45,8 @@ impl Plugin for EnemyPlugin {
     fn build(&self, app: &mut bevy::app::App) {
         app.add_system(zone_system.label("zone_system"))
             .add_system(bat_system.after("zone_system"))
+            .add_system(soft_collision_system)
+            .add_system(update_target_position_system)
             .add_system(attack_exit_bat_system)
             .add_system(attack_bat_system)
             .add_system_to_stage(SyncStages::UpdateBevyPhysics, bat_move_system);

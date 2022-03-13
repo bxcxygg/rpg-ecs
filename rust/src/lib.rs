@@ -11,8 +11,10 @@ mod world;
 use crate::app::{init_ecs, with_schedule, with_world};
 use crate::delect_box::hit_box::HitBox;
 use crate::delect_box::hurt_box::HurtBox;
+use crate::delect_box::soft_collision::SoftCollision;
 use crate::effect::EffectPlugin;
 use crate::enemy::bat::BatBundle;
+use crate::enemy::wander_controller::WanderController;
 use crate::enemy::EnemyPlugin;
 use crate::player::{PlayerBundle, PlayerPlugin};
 use crate::world::grass::Grass;
@@ -90,6 +92,8 @@ fn init(handle: InitHandle) {
     handle.add_class::<Grass>();
     handle.add_class::<WorldBundle>();
     handle.add_class::<HealthBundle>();
+    handle.add_class::<SoftCollision>();
+    handle.add_class::<WanderController>();
 
     init_ecs(GamePlugin);
 }
