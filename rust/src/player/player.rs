@@ -9,19 +9,17 @@ use gdnative::api::{
     KinematicBody2D,
 };
 use gdnative::prelude::*;
+use gdrust::ecs::app::with_world;
 use gdrust::ecs::engine_sync::components::{GodotObjRef, PlayingGame};
 use gdrust::ecs::engine_sync::resources::PhysicsDelta;
 use gdrust::macros::*;
 use gdrust::unsafe_functions::{NodeExt, RefExt};
 
+use crate::components::{Acceleration, Friction, Roll, Stats, Velocity};
 use crate::delect_box::hit_box::HitBox;
 use crate::delect_box::hurt_box::HurtBox;
 use crate::enemy::bat::Bat;
 use crate::world::health::ChangeHealth;
-use crate::{
-    components::{Acceleration, Friction, Roll, Stats, Velocity},
-    with_world,
-};
 
 const ATTACK_ANIMATION_LEN: f32 = 0.4;
 const ROLL_ANIMATION_LEN: f32 = 0.5;

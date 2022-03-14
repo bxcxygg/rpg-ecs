@@ -1,5 +1,6 @@
-[gd_scene load_steps=13 format=2]
+[gd_scene load_steps=14 format=2]
 
+[ext_resource path="res://scenes/effect/Effect.gdns" type="Script" id=1]
 [ext_resource path="res://assets/Effects/EnemyDeathEffect.png" type="Texture" id=2]
 
 [sub_resource type="AtlasTexture" id=1]
@@ -53,4 +54,4 @@ animations = [ {
 [node name="EnemyDeathEffect" type="AnimatedSprite"]
 frames = SubResource( 11 )
 animation = "animate"
-frame = 9
+script = ExtResource( 1 )

@@ -1,44 +1,65 @@
-use bevy::ecs::system::EntityCommands;
 use bevy::prelude::{App, Commands, Component, Entity, Plugin, Query, Res, Time, Timer};
 use defaults::Defaults;
 use gdnative::api::AnimatedSprite;
 use gdnative::prelude::*;
 use gdrust::ecs::engine_sync::components::GodotObjRef;
-use gdrust::unsafe_functions::{PackedSceneExt, RefExt};
+use gdrust::macros::gdrust;
+use gdrust::unsafe_functions::{PackedSceneExt, RefExt, ResourceLoaderExt};
 
 #[derive(Component, Default, Clone)]
 pub struct EffectTimer(pub Timer);
 
-#[derive(Component, Defaults, Clone)]
-pub struct Effect {
-    #[def = "PackedScene::new().into_shared()"]
+#[derive(Defaults, Clone)]
+pub struct BatDeadEffect {
+    #[def = "ResourceLoader::godot_singleton().expect_load_scene(\"res://scenes/effect/EnemyDeathEffect.tscn\")"]
     pub effect: Ref<PackedScene>,
 }
+
+#[derive(Defaults, Clone)]
+pub struct HitEffect {
+    #[def = "ResourceLoader::godot_singleton().expect_load_scene(\"res://scenes/effect/HitEffect.tscn\")"]
+    pub effect: Ref<PackedScene>,
+}
+
+#[derive(Defaults)]
+pub struct GrassEffect {
+    #[def = "ResourceLoader::godot_singleton().expect_load_scene(\"res://scenes/effect/GrassEffect.tscn\")"]
+    pub effect: Ref<PackedScene>,
+}
+
+#[gdrust(extends = AnimatedSprite)]
+#[derive(Component, Clone)]
+pub struct Effect;
+#[methods]
 impl Effect {
-    pub fn new(effect: Ref<PackedScene>) -> Self {
-        Self { effect }
+    #[export]
+    fn _ready(&mut self, owner: TRef<AnimatedSprite>) {
+        owner.set_frame(0);
+        owner.play("animate", false);
     }
 }
 
 pub fn add_effect(
-    mut commands: EntityCommands,
-    effect: Ref<PackedScene>,
-    time: f32,
+    commands: &mut Commands,
+    effect: &Ref<PackedScene>,
     pos: Vector2,
     parent: TRef<Node>,
 ) {
     let effect = effect.expect_safe();
     let effect = effect.expect_instance_as::<AnimatedSprite>();
+    let frame = effect
+        .sprite_frames()
+        .unwrap()
+        .expect_safe()
+        .get_frame_count("animate");
 
     effect.set_global_position(pos);
     parent.add_child(effect, false);
 
-    effect.set_frame(0);
-    effect.play("animate", false);
-
     commands
+        .spawn()
         .insert(GodotObjRef::new(effect.claim()))
-        .insert(EffectTimer(Timer::from_seconds(time, false)));
+        .insert(EffectTimer(Timer::from_seconds(frame as f32 / 15., false)));
 }
 
 pub fn effect_finished(
@@ -59,6 +80,9 @@ pub struct EffectPlugin;
 
 impl Plugin for EffectPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(effect_finished);
+        app.init_resource::<BatDeadEffect>()
+            .init_resource::<HitEffect>()
+            .init_resource::<GrassEffect>()
+            .add_system(effect_finished);
     }
 }

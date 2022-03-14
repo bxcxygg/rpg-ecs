@@ -1,7 +1,7 @@
-use crate::with_world;
 use bevy::prelude::{Component, EventReader, Query, With};
 use gdnative::api::TextureRect;
 use gdnative::prelude::*;
+use gdrust::ecs::app::with_world;
 use gdrust::ecs::engine_sync::components::PlayingGame;
 use gdrust::macros::*;
 use gdrust::unsafe_functions::{NodeExt, RefExt};

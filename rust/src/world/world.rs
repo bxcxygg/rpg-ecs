@@ -1,5 +1,5 @@
-use crate::with_world;
 use gdnative::prelude::*;
+use gdrust::ecs::app::with_world;
 use gdrust::ecs::engine_sync::events::spawn_game;
 use gdrust::macros::*;
 

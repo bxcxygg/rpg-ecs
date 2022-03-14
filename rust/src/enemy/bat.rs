@@ -1,27 +1,23 @@
 use crate::components::{Acceleration, Friction, Knockback, Stats, Velocity};
 use crate::delect_box::hit_box::HitBox;
-use crate::delect_box::hurt_box::{HurtBox, HIT_EFFECT_LENGTH};
+use crate::delect_box::hurt_box::HurtBox;
 use crate::delect_box::soft_collision::SoftCollision;
-use crate::effect::{add_effect, Effect};
+use crate::effect::{add_effect, BatDeadEffect, HitEffect};
 use crate::enemy::wander_controller::WanderTimer;
 use crate::enemy::DelectionZone;
 use crate::player::{Player, PlayerAttacking};
-use crate::{with_world, WanderController};
+use crate::WanderController;
 use bevy::prelude::{Bundle, Commands, Component, Entity, Query, Res, Timer, With, Without};
 use defaults::Defaults;
 use gdnative::api::{AnimatedSprite, Area2D, KinematicBody2D};
 use gdnative::prelude::*;
+use gdrust::ecs::app::with_world;
 use gdrust::ecs::engine_sync::components::{GodotObjRef, PlayingGame};
 use gdrust::ecs::engine_sync::resources::PhysicsDelta;
 use gdrust::macros::*;
-use gdrust::unsafe_functions::{NodeExt, NodeTreeExt, RefExt, ResourceLoaderExt};
+use gdrust::unsafe_functions::{NodeExt, NodeTreeExt, RefExt};
 use rand::prelude::SliceRandom;
-use rand::Rng;
 use std::f64::consts::FRAC_PI_4;
-use std::ops::Range;
-use std::time::Duration;
-
-const ENEMY_DEATH_LENGTH: f32 = 9. / 15.;
 
 #[derive(Component, Clone, Hash, Eq, PartialEq, Default, Copy)]
 pub enum BatState {
@@ -36,9 +32,6 @@ pub struct Bat {
     #[def = "KinematicBody2D::new().into_shared()"]
     pub owner: Ref<KinematicBody2D>,
 }
-
-#[derive(Component, Default, Clone)]
-pub struct BatDeadEffect(pub Effect);
 
 #[derive(Component, Default, Clone)]
 pub struct BatKnockback(pub Knockback);
@@ -63,11 +56,6 @@ impl BatBundle {
     #[export]
     fn _ready(&mut self, owner: TRef<KinematicBody2D>) {
         with_world(|w| {
-            let effect = Effect::new(
-                ResourceLoader::godot_singleton()
-                    .expect_load_scene("res://scenes/effect/EnemyDeathEffect.tscn"),
-            );
-
             w.spawn()
                 .insert_bundle(self.clone())
                 .insert(
@@ -94,11 +82,10 @@ impl BatBundle {
                         .map(|h, _| h.clone())
                         .unwrap(),
                 )
-                .insert(WanderTimer(Timer::from_seconds(3., false)))
+                .insert(WanderTimer(Timer::from_seconds(2., false)))
                 .insert(GodotObjRef::new(
                     owner.expect_node::<AnimatedSprite>("Sprite").claim(),
                 ))
-                .insert(BatDeadEffect(effect))
                 .insert(DelectionZone {
                     owner: owner.expect_node::<Area2D>("Zone").claim(),
                     player: None,
@@ -180,9 +167,6 @@ pub fn bat_idle_or_wander(delect_zone: &DelectionZone, state: &mut BatState, tim
         state_list.shuffle(&mut rng);
         *state = state_list[0];
 
-        timer.set_duration(Duration::from_secs_f32(
-            rng.gen_range(Range { start: 1., end: 3. }),
-        ));
         timer.reset();
     }
 }
@@ -236,10 +220,7 @@ pub fn bat_move_system(
             .move_toward(Vector2::ZERO, 200. * delta.value);
         bat.move_and_slide(knockback.0.vector, Vector2::ZERO, false, 4, FRAC_PI_4, true);
 
-        // let soft_collision_area = soft_collision.owner.expect_safe();
-        // if !soft_collision_area.get_overlapping_areas().is_empty() {
         velocity.velocity += soft_collision.input_vector;
-        // }
 
         velocity.velocity =
             bat.move_and_slide(velocity.velocity, Vector2::ZERO, false, 4, FRAC_PI_4, true);
@@ -249,6 +230,8 @@ pub fn bat_move_system(
 /// Attack Bat System.
 pub fn attack_bat_system(
     mut commands: Commands,
+    dead_effect: Res<BatDeadEffect>,
+    hit_effect: Res<HitEffect>,
     mut bat: Query<
         (
             Entity,
@@ -256,15 +239,13 @@ pub fn attack_bat_system(
             &mut BatKnockback,
             &mut Stats,
             &Bat,
-            &BatDeadEffect,
             &HitBox,
         ),
         Without<PlayerAttacking>,
     >,
     hitbox: Query<&HitBox, With<Player>>,
 ) {
-    for (entity, hurtbox, mut knockback, mut stats, bat, dead_effect, bat_hitbox) in bat.iter_mut()
-    {
+    for (entity, hurtbox, mut knockback, mut stats, bat, bat_hitbox) in bat.iter_mut() {
         let hurtbox_area = hurtbox.owner.expect_safe();
         let bat = bat.owner.expect_safe();
 
@@ -280,24 +261,10 @@ pub fn attack_bat_system(
                 commands.entity(entity).insert(PlayerAttacking);
 
                 // spawn the effect
-                let entity_commands = commands.spawn();
-                add_effect(
-                    entity_commands,
-                    hurtbox.effect.clone(),
-                    HIT_EFFECT_LENGTH,
-                    positon,
-                    parent,
-                );
+                add_effect(&mut commands, &hit_effect.effect, positon, parent);
 
                 if stats.health <= 0 {
-                    let entity_commands = commands.spawn();
-                    add_effect(
-                        entity_commands,
-                        dead_effect.0.effect.clone(),
-                        ENEMY_DEATH_LENGTH,
-                        positon,
-                        parent,
-                    );
+                    add_effect(&mut commands, &dead_effect.effect, positon, parent);
 
                     commands.entity(entity).despawn();
                     bat.queue_free();
