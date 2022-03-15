@@ -6,10 +6,11 @@ use gdrust::macros::*;
 #[gdrust(extends = Node2D)]
 #[derive(Default, Clone)]
 pub struct WorldBundle;
+
 #[methods]
 impl WorldBundle {
     #[export]
     fn _ready(&mut self, owner: TRef<Node2D>) {
-        with_world(|w| spawn_game(w, owner.upcast::<Node>().claim()))
+        with_world(|w| spawn_game(w, owner.upcast::<Node>().claim()));
     }
 }

@@ -5,11 +5,7 @@ authors = ["yan <3200828584@qq.com>"]
 edition = "2021"
 
 [lib]
-crate-type = ["cdylib", "staticlib"]
-
-dev = [
-    "bevy/dynamic",
-]
+crate-type = ["cdylib"]
 
 [dependencies]
 gdnative = { git = "https://github.com/godot-rust/godot-rust.git", features = ["formatted"] }

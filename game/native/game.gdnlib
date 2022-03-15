@@ -7,10 +7,10 @@ reloadable=true
 
 [entry]
 
-OSX.arm64="res://../lib/aarch64-apple-darwin/librpg_ecs.dylib"
 OSX.64="res://../lib/x86_64-apple-darwin/librpg_ecs.dylib"
+OSX.arm64="res://../lib/aarch64-apple-darwin/librpg_ecs.dylib"
 
 [dependencies]
 
-OSX.arm64=[  ]
 OSX.64=[  ]
+OSX.arm64=[  ]
