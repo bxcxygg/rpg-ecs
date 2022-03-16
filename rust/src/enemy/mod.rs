@@ -4,7 +4,6 @@ use crate::enemy::wander_controller::update_target_position_system;
 use crate::player::Player;
 use bevy::app::Plugin;
 use bevy::prelude::{Component, ParallelSystemDescriptorCoercion, Query};
-use defaults::Defaults;
 use gdnative::api::Area2D;
 use gdnative::prelude::*;
 use gdrust::ecs::engine_sync::stages::SyncStages;
@@ -13,9 +12,8 @@ use gdrust::unsafe_functions::RefExt;
 pub mod bat;
 pub mod wander_controller;
 
-#[derive(Component, Defaults, Copy, Clone)]
+#[derive(Component, Copy, Clone)]
 pub struct DelectionZone {
-    #[def = "Area2D::new().into_shared()"]
     pub owner: Ref<Area2D>,
     pub player: Option<Ref<KinematicBody2D>>,
 }

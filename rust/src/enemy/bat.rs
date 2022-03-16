@@ -1,14 +1,6 @@
-use crate::components::{Acceleration, Friction, Knockback, Stats, Velocity};
-use crate::delect_box::hit_box::HitBox;
-use crate::delect_box::hurt_box::HurtBox;
-use crate::delect_box::soft_collision::SoftCollision;
-use crate::effect::{add_effect, BatDeadEffect, HitEffect};
-use crate::enemy::wander_controller::WanderTimer;
-use crate::enemy::DelectionZone;
-use crate::player::{Player, PlayerAttacking};
-use crate::WanderController;
+use std::f64::consts::FRAC_PI_4;
+
 use bevy::prelude::{Bundle, Commands, Component, Entity, Query, Res, Timer, With, Without};
-use defaults::Defaults;
 use gdnative::api::{AnimatedSprite, Area2D, KinematicBody2D};
 use gdnative::prelude::*;
 use gdrust::ecs::app::with_world;
@@ -17,7 +9,16 @@ use gdrust::ecs::engine_sync::resources::PhysicsDelta;
 use gdrust::macros::*;
 use gdrust::unsafe_functions::{NodeExt, NodeTreeExt, RefExt};
 use rand::prelude::SliceRandom;
-use std::f64::consts::FRAC_PI_4;
+
+use crate::components::{Acceleration, Friction, Knockback, Stats, Velocity};
+use crate::delect_box::hit_box::HitBox;
+use crate::delect_box::hurt_box::HurtBox;
+use crate::delect_box::soft_collision::SoftCollision;
+use crate::effect::{add_effect, BatDeadEffect};
+use crate::enemy::wander_controller::WanderTimer;
+use crate::enemy::DelectionZone;
+use crate::player::{Player, PlayerAttacking};
+use crate::WanderController;
 
 #[derive(Component, Clone, Hash, Eq, PartialEq, Default, Copy)]
 pub enum BatState {
@@ -27,19 +28,19 @@ pub enum BatState {
     CHASE,
 }
 
-#[derive(Component, Defaults, Copy, Clone)]
+#[derive(Component, Clone)]
 pub struct Bat {
-    #[def = "KinematicBody2D::new().into_shared()"]
     pub owner: Ref<KinematicBody2D>,
+    pub dead_effect: BatDeadEffect,
 }
 
 #[derive(Component, Default, Clone)]
 pub struct BatKnockback(pub Knockback);
 
 #[gdrust(extends = KinematicBody2D)]
-#[derive(Bundle, Default, Clone)]
+#[derive(Bundle, Clone)]
 pub struct BatBundle {
-    #[default(Bat{ owner: _owner.claim() })]
+    #[default(Bat{ owner: _owner.claim(), dead_effect: BatDeadEffect::default() })]
     pub bat: Bat,
     pub state: BatState,
     #[export]
@@ -51,6 +52,7 @@ pub struct BatBundle {
     #[export]
     pub friction: Friction,
 }
+
 #[methods]
 impl BatBundle {
     #[export]
@@ -91,7 +93,7 @@ impl BatBundle {
                     player: None,
                 })
                 .insert(PlayingGame);
-        })
+        });
     }
 }
 
@@ -230,8 +232,6 @@ pub fn bat_move_system(
 /// Attack Bat System.
 pub fn attack_bat_system(
     mut commands: Commands,
-    dead_effect: Res<BatDeadEffect>,
-    hit_effect: Res<HitEffect>,
     mut bat: Query<
         (
             Entity,
@@ -247,7 +247,7 @@ pub fn attack_bat_system(
 ) {
     for (entity, hurtbox, mut knockback, mut stats, bat, bat_hitbox) in bat.iter_mut() {
         let hurtbox_area = hurtbox.owner.expect_safe();
-        let bat = bat.owner.expect_safe();
+        let bat_body = bat.owner.expect_safe();
 
         for hitbox in hitbox.iter() {
             let hitbox_area = hitbox.owner.expect_safe();
@@ -255,19 +255,23 @@ pub fn attack_bat_system(
                 stats.health -= bat_hitbox.damage;
                 knockback.0.vector = hitbox.knockback * 120.;
 
-                let positon = bat.global_position();
-                let parent = bat.expect_tree().current_scene().unwrap().expect_safe();
+                let positon = bat_body.global_position();
+                let parent = bat_body
+                    .expect_tree()
+                    .current_scene()
+                    .unwrap()
+                    .expect_safe();
 
                 commands.entity(entity).insert(PlayerAttacking);
 
                 // spawn the effect
-                add_effect(&mut commands, &hit_effect.effect, positon, parent);
+                add_effect(&mut commands, &hurtbox.hit_effect.effect, positon, parent);
 
                 if stats.health <= 0 {
-                    add_effect(&mut commands, &dead_effect.effect, positon, parent);
+                    add_effect(&mut commands, &bat.dead_effect.effect, positon, parent);
 
                     commands.entity(entity).despawn();
-                    bat.queue_free();
+                    bat_body.queue_free();
                 }
             }
         }

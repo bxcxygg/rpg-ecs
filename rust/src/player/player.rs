@@ -42,15 +42,14 @@ pub struct PlayerAttacking;
 
 /// Player Component.
 /// This is the component of the player.
-#[derive(Component, Defaults, Clone, Copy)]
+#[derive(Component, Clone, Copy)]
 pub struct Player {
-    #[def = "KinematicBody2D::new().into_shared()"]
     pub owner: Ref<KinematicBody2D>,
 }
 
 /// Player bundle.
 #[gdrust(extends = KinematicBody2D)]
-#[derive(Bundle, Default, Clone)]
+#[derive(Bundle, Clone)]
 pub struct PlayerBundle {
     #[default(Player{owner: _owner.claim()})]
     player: Player,

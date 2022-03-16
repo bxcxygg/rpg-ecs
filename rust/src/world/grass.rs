@@ -1,11 +1,11 @@
-use crate::delect_box::hit_box::HitBox;
-use bevy::prelude::{Commands, Component, Entity, Query, Res, With};
+use bevy::prelude::{Commands, Component, Entity, Query, With};
 use gdnative::prelude::*;
 use gdrust::ecs::app::with_world;
 use gdrust::ecs::engine_sync::components::PlayingGame;
 use gdrust::macros::*;
 use gdrust::unsafe_functions::{NodeExt, NodeTreeExt, RefExt};
 
+use crate::delect_box::hit_box::HitBox;
 use crate::delect_box::hurt_box::HurtBox;
 use crate::effect::{add_effect, GrassEffect};
 use crate::player::Player;
@@ -15,7 +15,9 @@ use crate::player::Player;
 pub struct Grass {
     #[default(_owner.claim())]
     pub owner: Ref<Node2D>,
+    pub grass_effect: GrassEffect,
 }
+
 #[methods]
 impl Grass {
     #[export]
@@ -37,7 +39,6 @@ impl Grass {
 /// Kill grass when it is hit by a player.
 pub fn kill_grass_system(
     mut commands: Commands,
-    grass_effect: Res<GrassEffect>,
     player: Query<&HitBox, With<Player>>,
     grass: Query<(Entity, &Grass, &HurtBox)>,
 ) {
@@ -53,7 +54,7 @@ pub fn kill_grass_system(
                 // spawn the effect
                 add_effect(
                     &mut commands,
-                    &grass_effect.effect,
+                    &grass.grass_effect.effect,
                     grass_ref.global_position(),
                     grass_ref
                         .expect_tree()

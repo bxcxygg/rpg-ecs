@@ -21,7 +21,7 @@ pub struct HitEffect {
     pub effect: Ref<PackedScene>,
 }
 
-#[derive(Defaults)]
+#[derive(Defaults, Clone)]
 pub struct GrassEffect {
     #[def = "ResourceLoader::godot_singleton().expect_load_scene(\"res://scenes/effect/GrassEffect.tscn\")"]
     pub effect: Ref<PackedScene>,
@@ -30,6 +30,7 @@ pub struct GrassEffect {
 #[gdrust(extends = AnimatedSprite)]
 #[derive(Component, Clone)]
 pub struct Effect;
+
 #[methods]
 impl Effect {
     #[export]
@@ -80,9 +81,6 @@ pub struct EffectPlugin;
 
 impl Plugin for EffectPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<BatDeadEffect>()
-            .init_resource::<HitEffect>()
-            .init_resource::<GrassEffect>()
-            .add_system(effect_finished);
+        app.add_system(effect_finished);
     }
 }
