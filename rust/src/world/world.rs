@@ -19,7 +19,7 @@ impl WorldBundle {
         with_world(|w| {
             let entity = w
                 .spawn()
-                .insert(GodotObjRef::new(owner.claim()))
+                .insert(GodotObjRef::new(owner.upcast::<Node>().claim()))
                 .insert(GameNode)
                 .insert(PlayingGame)
                 .id();
